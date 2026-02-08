@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Core.Interfaces;
+﻿using ECommerceApp.Core.Entities;
+using ECommerceApp.Core.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -36,7 +37,13 @@ namespace ECommerceApp.Data.Repositories
         }
         public void Delete(T entity)
         {
-            _dbSet.Remove(entity);
+            //_dbSet.Remove(entity);
+            if (entity is BaseEntity baseEntity)
+            {
+                baseEntity.IsDeleted = true;
+                _dbSet.Update(entity);
+            }
+            else _dbSet.Remove(entity);
         }
         public IQueryable<T> Where(Expression<Func<T, bool>> expression)
         {

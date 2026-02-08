@@ -1,0 +1,20 @@
+﻿using ECommerceApp.Core.DTOs.Products;
+using ECommerceApp.Core.Entities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ECommerceApp.Core.Interfaces.Services
+{
+    public interface IProductService
+    {
+        Task<IEnumerable<ProductDto>> GetAllAsync();
+        Task<ProductDto> GetByIdAsync(long id);
+        Task<ProductDto> AddAsync(ProductCreateDto entity);
+        Task<ProductDto> Update(ProductUpdateDto entity);
+        Task Delete(long id);
+    }
+}
