@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Core.DTOs.Products;
+using ECommerceApp.Core.Enums;
 using ECommerceApp.Core.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,9 +17,9 @@ namespace ECommerceApp.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest)
         {
-            var data = await _productService.GetAllAsync();
+            var data = await _productService.GetAllAsync(pageNumber, pageSize, sortType);
             return Ok(data);
         }
         
@@ -35,6 +36,13 @@ namespace ECommerceApp.API.Controllers
             }
          
         }
+   
+
+        [HttpGet("category/{categoryId:long}")]
+        public async Task<IActionResult> GetByCategoryId([FromRoute] long categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest) { 
+            var data = await _productService.GetProductsByCategoryIdAsync(categoryId, pageNumber, pageSize, sortType);
+            return Ok(data);
+        }
 
         [HttpPost]
         public async Task<IActionResult> Create(ProductCreateDto product)
@@ -49,7 +57,8 @@ namespace ECommerceApp.API.Controllers
             if(id != product.Id) return BadRequest();
             try {
                var data =  await _productService.Update(product);
-                return Ok(data);
+                //return Ok(data);
+                return NoContent();
             }
             catch (KeyNotFoundException)
             { 
