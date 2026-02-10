@@ -26,15 +26,8 @@ namespace ECommerceApp.API.Controllers
         [HttpGet("{id:long}")]
         public async Task<IActionResult> GetById(long id)
         {
-            try {
-                var data = await _productService.GetByIdAsync(id);
-                return Ok(data);
-            }
-            catch (KeyNotFoundException)
-            { 
-                return NotFound(); 
-            }
-         
+            var data = await _productService.GetByIdAsync(id);
+            return Ok(data);
         }
    
 
@@ -54,29 +47,17 @@ namespace ECommerceApp.API.Controllers
         [HttpPut("{id:long}")]
         public async Task<IActionResult> Update(long id, ProductUpdateDto product)
         {
-            if(id != product.Id) return BadRequest();
-            try {
-               var data =  await _productService.Update(product);
+            var data =  await _productService.Update(product);
                 //return Ok(data);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            { 
-                return NotFound(); 
-            }
-
+                return NoContent();       
         }
 
         [HttpDelete("{id:long}")]
         public async Task<IActionResult> Delete(long id)
         {
-            try {
-                await _productService.Delete(id);
-                return NoContent();      
-            }
-            catch (KeyNotFoundException){
-                return NotFound();
-            }
+            await _productService.Delete(id);
+            return NoContent();      
+          
         }
              
     }

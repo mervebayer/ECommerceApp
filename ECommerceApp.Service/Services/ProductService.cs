@@ -2,6 +2,7 @@
 using ECommerceApp.Core.DTOs.Products;
 using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Enums;
+using ECommerceApp.Core.Exceptions;
 using ECommerceApp.Core.Interfaces;
 using ECommerceApp.Core.Interfaces.Repositories;
 using ECommerceApp.Core.Interfaces.Services;
@@ -21,6 +22,25 @@ namespace ECommerceApp.Service.Services
             _unitOfWork = unitOfWork;
         }
 
+        public async Task<IEnumerable<ProductDto>> GetAllAsync(int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
+        {
+            var data = await _product.GetAllWithCategoriesAsync(pageSize, pageNumber, sortType);
+            return _mapper.Map<IEnumerable<ProductDto>>(data);
+        }
+        public async Task<ProductDto> GetByIdAsync(long id)
+        {
+            var data = await _product.GetByIdWithCategoryAsync(id);
+            if (data == null)
+                throw new NotFoundException($"Product with Id {id} was not found.");
+            return _mapper.Map<ProductDto>(data);
+        }
+
+        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
+        {
+            var data = await _product.GetProductsByCategoryIdAsync(categoryId, pageSize, pageNumber, sortType);
+            return _mapper.Map<IEnumerable<ProductDto>>(data);
+        }
+
         public async Task<ProductDto> AddAsync(ProductCreateDto entity)
         {
             var data = _mapper.Map<Product>(entity);
@@ -30,32 +50,44 @@ namespace ECommerceApp.Service.Services
             return _mapper.Map<ProductDto>(product);
         }
 
+        // TODO: update category name
+
+        public async Task<ProductDto> Update(ProductUpdateDto entity)
+        {
+            var data = await _product.GetByIdAsync(entity.Id);
+            if (data == null) {
+                var errors = new Dictionary<string, string[]>
+                {
+                   { "Id", new[] { "The ID in the URL and the request body must match." } } 
+                };
+                throw new ValidationException(errors);
+            }
+                
+            var product = _mapper.Map(entity, data);
+            _product.Update(product);
+            await _unitOfWork.CommitAsync();
+            return _mapper.Map<ProductDto>(product);
+        }
+
         public async Task Delete(long id)
         {
             var data = await _product.GetByIdAsync(id);
             if (data == null)
-                throw new KeyNotFoundException("Data does not exist.");
+                throw new NotFoundException($"Product with Id {id} was not found.");
             _product.Delete(data);
             await _unitOfWork.CommitAsync();
         }
-        public async Task<IEnumerable<ProductDto>> GetAllAsync(int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
-        {
-            var data = await _product.GetAllWithCategoriesAsync(pageSize, pageNumber, sortType);
-            return _mapper.Map<IEnumerable<ProductDto>>(data);
-        }
+
+
+
+
+        #region WithoutCategory
         public async Task<IEnumerable<ProductDto>> GetAllWithoutCategoryAsync()
         {
             var data = await _product.GetAllAsync();
             return _mapper.Map<IEnumerable<ProductDto>>(data);
         }
 
-        public async Task<ProductDto> GetByIdAsync(long id)
-        {
-            var data = await _product.GetByIdWithCategoryAsync(id);
-            if (data == null)
-                throw new KeyNotFoundException("Data does not exist.");
-            return _mapper.Map<ProductDto>(data);
-        }
         public async Task<ProductDto> GetByIdWithoutCategoryAsync(long id)
         {
             var data = await _product.GetByIdAsync(id);
@@ -65,22 +97,8 @@ namespace ECommerceApp.Service.Services
         }
 
 
-        // TODO: update category name
+        #endregion
 
-        public async Task<ProductDto> Update(ProductUpdateDto entity)
-        {
-            var data = await _product.GetByIdAsync(entity.Id);
-            if (data == null)
-                throw new KeyNotFoundException("Data does not exist.");
-            var product = _mapper.Map(entity, data);
-            _product.Update(product);
-            await _unitOfWork.CommitAsync();
-            return _mapper.Map<ProductDto>(product);
-        }
 
-        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest) {
-            var data = await _product.GetProductsByCategoryIdAsync(categoryId, pageSize, pageNumber, sortType);    
-            return _mapper.Map<IEnumerable<ProductDto>>(data);
-        }
     }
 }

@@ -1,3 +1,4 @@
+using ECommerceApp.API.Middlewares;
 using ECommerceApp.Core.Interfaces;
 using ECommerceApp.Core.Interfaces.Repositories;
 using ECommerceApp.Core.Interfaces.Services;
@@ -24,6 +25,8 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
