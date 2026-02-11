@@ -9,6 +9,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using ECommerceApp.Core.Extensions;
+
 
 namespace ECommerceApp.Core.Interfaces.Repositories
 {
@@ -25,27 +27,10 @@ namespace ECommerceApp.Core.Interfaces.Repositories
         public async Task<IEnumerable<Product>> GetAllWithCategoriesAsync(int pageSize, int pageNumber, ProductSortType sortType)
         {
             IQueryable<Product> query = _context.Products.Include(x => x.Category);
-            switch (sortType)
-            {
-                case ProductSortType.Newest:
-                    query = query.OrderByDescending(x => x.CreatedDate);
-                    break;
-                case ProductSortType.PriceDesc:
-                    query = query.OrderByDescending(x => x.Price);
-                    break;
-                case ProductSortType.PriceAsc:
-                    query = query.OrderBy(x => x.Price);
-                    break;
-                case ProductSortType.NameAsc:
-                    query = query.OrderBy(x => x.Name);
-                    break;
-                default:
-                    query = query.OrderByDescending(x => x.CreatedDate);
-                    break;
 
-            }
-            return await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
-         
+            return await query.SortBy(sortType)
+                        .ToPagedList(pageNumber, pageSize)
+                        .ToListAsync();
         }
 
         public async Task<Product> GetByIdWithCategoryAsync(long id, CancellationToken cancellationToken)
@@ -57,26 +42,9 @@ namespace ECommerceApp.Core.Interfaces.Repositories
         {
             var query = _context.Products.Include(x => x.Category).Where(x => x.CategoryId == categoryId);
 
-            switch (sortType) {
-                case ProductSortType.Newest:
-                    query = query.OrderByDescending(x => x.CreatedDate);
-                    break;
-                case ProductSortType.PriceDesc:
-                    query = query.OrderByDescending(x => x.Price);
-                    break;
-                case ProductSortType.PriceAsc:
-                    query = query.OrderBy(x => x.Price);
-                    break;
-                case ProductSortType.NameAsc:
-                    query = query.OrderBy(x => x.Name);
-                    break;
-                default:
-                    query = query.OrderByDescending(x => x.CreatedDate);
-                    break;
-
-                } 
-                           
-               return await query.Skip((pageNumber-1) * pageSize).Take(pageSize).ToListAsync();
+            return await query.SortBy(sortType)
+                              .ToPagedList(pageNumber, pageSize)
+                              .ToListAsync();         
         }
 
         public IQueryable<Product> Where(Expression<Func<Product, bool>> expression)
