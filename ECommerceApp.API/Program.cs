@@ -6,6 +6,8 @@ using ECommerceApp.Data;
 using ECommerceApp.Data.Repositories;
 using ECommerceApp.Service.Mappings;
 using ECommerceApp.Service.Services;
+using ECommerceApp.Service.Validations.Products;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +25,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+builder.Services.AddValidatorsFromAssembly(typeof(ProductCreateDtoValidator).Assembly);
 
 var app = builder.Build();
 

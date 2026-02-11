@@ -6,6 +6,8 @@ using ECommerceApp.Core.Exceptions;
 using ECommerceApp.Core.Interfaces;
 using ECommerceApp.Core.Interfaces.Repositories;
 using ECommerceApp.Core.Interfaces.Services;
+using ECommerceApp.Service.Extensions;
+using FluentValidation;
 
 namespace ECommerceApp.Service.Services
 {
@@ -14,12 +16,16 @@ namespace ECommerceApp.Service.Services
         private readonly IProductRepository _product;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IValidator<ProductCreateDto> _createValidator;
+        private readonly IValidator<ProductUpdateDto> _updateValidator;
 
-        public ProductService(IProductRepository product, IMapper mapper, IUnitOfWork unitOfWork)
+        public ProductService(IProductRepository product, IMapper mapper, IUnitOfWork unitOfWork, IValidator<ProductCreateDto> createValidator, IValidator<ProductUpdateDto> updateValidator)
         {
             _product = product;
             _mapper = mapper;
             _unitOfWork = unitOfWork;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
         }
 
         public async Task<IEnumerable<ProductDto>> GetAllAsync(int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
@@ -43,6 +49,9 @@ namespace ECommerceApp.Service.Services
 
         public async Task<ProductDto> AddAsync(ProductCreateDto entity)
         {
+            var validationResult = await _createValidator.ValidateAsync(entity);
+            validationResult.ThrowIfInvalid();
+        
             var data = _mapper.Map<Product>(entity);
             await _product.AddAsync(data);
             await _unitOfWork.CommitAsync();
@@ -54,15 +63,13 @@ namespace ECommerceApp.Service.Services
 
         public async Task<ProductDto> Update(ProductUpdateDto entity)
         {
+            var validationResult = await _updateValidator.ValidateAsync(entity);
+            validationResult.ThrowIfInvalid();
+
             var data = await _product.GetByIdAsync(entity.Id);
-            if (data == null) {
-                var errors = new Dictionary<string, string[]>
-                {
-                   { "Id", new[] { "The ID in the URL and the request body must match." } } 
-                };
-                throw new ValidationException(errors);
-            }
-                
+            if (data == null) 
+                throw new NotFoundException($"Product with Id {entity.Id} was not found.");
+                           
             var product = _mapper.Map(entity, data);
             _product.Update(product);
             await _unitOfWork.CommitAsync();
@@ -71,6 +78,14 @@ namespace ECommerceApp.Service.Services
 
         public async Task Delete(long id)
         {
+            if (id <= 0)
+            {
+                var errors = new Dictionary<string, string[]>
+                    {
+                        { "Id", new[] { "Id must be greater than 0." } }
+                    };
+                throw new Core.Exceptions.ValidationException(errors);
+            }
             var data = await _product.GetByIdAsync(id);
             if (data == null)
                 throw new NotFoundException($"Product with Id {id} was not found.");
