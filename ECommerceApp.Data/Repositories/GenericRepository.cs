@@ -35,16 +35,24 @@ namespace ECommerceApp.Data.Repositories
         {
             _dbSet.Update(entity);
         }
+
         public void Delete(T entity)
         {
-            //_dbSet.Remove(entity);
             if (entity is BaseEntity baseEntity)
             {
                 baseEntity.IsDeleted = true;
-                _dbSet.Update(entity);
+
+                var entry = _context.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                    _dbSet.Attach(entity);
+
+                _context.Entry(entity).Property(nameof(BaseEntity.IsDeleted)).IsModified = true;
+                return;
             }
-            else _dbSet.Remove(entity);
+
+            _dbSet.Remove(entity);
         }
+
         public IQueryable<T> Where(Expression<Func<T, bool>> expression)
         {
             return _dbSet.Where(expression);         
