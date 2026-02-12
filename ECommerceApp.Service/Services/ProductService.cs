@@ -35,8 +35,7 @@ namespace ECommerceApp.Service.Services
         }
         public async Task<ProductDto> GetByIdAsync(long id)
         {
-            var data = await _product.GetByIdWithCategoryAsync(id);
-            if (data == null)
+            var data = await _product.GetByIdWithCategoryAsync(id) ??
                 throw new NotFoundException($"Product with Id {id} was not found.");
             return _mapper.Map<ProductDto>(data);
         }
@@ -55,45 +54,49 @@ namespace ECommerceApp.Service.Services
             var data = _mapper.Map<Product>(entity);
             await _product.AddAsync(data);
             await _unitOfWork.CommitAsync();
-            var product = await _product.GetByIdWithCategoryAsync(data.Id);
+            var product = await _product.GetByIdWithCategoryAsync(data.Id) ??
+                throw new NotFoundException($"Product with Id {data.Id} could not be loaded after creation.");       
             return _mapper.Map<ProductDto>(product);
         }
 
-        // TODO: update category name
 
-        public async Task<ProductDto> Update(ProductUpdateDto entity)
+        // TODO: update category name
+        public async Task UpdateAsync(long id, ProductUpdateDto entity)
         {
             var validationResult = await _updateValidator.ValidateAsync(entity);
             validationResult.ThrowIfInvalid();
 
-            var data = await _product.GetByIdAsync(entity.Id);
-            if (data == null) 
-                throw new NotFoundException($"Product with Id {entity.Id} was not found.");
+            var data = await _product.GetByIdAsync(id) ??
+                throw new NotFoundException($"Product with Id {id} was not found.");
                            
             var product = _mapper.Map(entity, data);
             _product.Update(product);
-            await _unitOfWork.CommitAsync();
-            return _mapper.Map<ProductDto>(product);
+            await _unitOfWork.CommitAsync();         
         }
 
-        public async Task Delete(long id)
+
+        public async Task DeleteAsync(long id)
         {
-            if (id <= 0)
-            {
-                var errors = new Dictionary<string, string[]>
-                    {
-                        { "Id", new[] { "Id must be greater than 0." } }
-                    };
-                throw new Core.Exceptions.ValidationException(errors);
-            }
-            var data = await _product.GetByIdAsync(id);
-            if (data == null)
+            var data = await _product.GetByIdAsync(id) ??
                 throw new NotFoundException($"Product with Id {id} was not found.");
             _product.Delete(data);
             await _unitOfWork.CommitAsync();
         }
 
+        //public async Task<ProductDto> Update(long id, ProductUpdateDto entity)
+        //{
+        //    var validationResult = await _updateValidator.ValidateAsync(entity);
+        //    validationResult.ThrowIfInvalid();
 
+        //    var data = await _product.GetByIdAsync(id);
+        //    if (data == null) 
+        //        throw new NotFoundException($"Product with Id {id} was not found.");
+
+        //    var product = _mapper.Map(entity, data);
+        //    _product.Update(product);
+        //    await _unitOfWork.CommitAsync();
+        //    return _mapper.Map<ProductDto>(product);
+        //}
 
 
         #region WithoutCategory
@@ -105,8 +108,7 @@ namespace ECommerceApp.Service.Services
 
         public async Task<ProductDto> GetByIdWithoutCategoryAsync(long id)
         {
-            var data = await _product.GetByIdAsync(id);
-            if (data == null)
+            var data = await _product.GetByIdAsync(id) ??
                 throw new KeyNotFoundException("Data does not exist.");
             return _mapper.Map<ProductDto>(data);
         }

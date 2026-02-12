@@ -47,9 +47,5 @@ namespace ECommerceApp.Core.Interfaces.Repositories
                               .ToListAsync();         
         }
 
-        public IQueryable<Product> Where(Expression<Func<Product, bool>> expression)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

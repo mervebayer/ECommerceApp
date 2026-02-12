@@ -16,8 +16,9 @@ namespace ECommerceApp.Core.Interfaces.Services
         Task<ProductDto> GetByIdAsync(long id);
         Task<ProductDto> GetByIdWithoutCategoryAsync(long id);
         Task<ProductDto> AddAsync(ProductCreateDto entity);
-        Task<ProductDto> Update(ProductUpdateDto entity);
-        Task Delete(long id);
+        //Task<ProductDto> Update(long id, ProductUpdateDto entity);
+        Task UpdateAsync(long id, ProductUpdateDto entity);
+        Task DeleteAsync(long id);
         Task<IEnumerable<ProductDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType);  
           
     }

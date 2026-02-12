@@ -23,7 +23,7 @@ namespace ECommerceApp.API.Controllers
             return Ok(data);
         }
         
-        [HttpGet("{id:long}")]
+        [HttpGet("{id:long:min(1)}")]
         public async Task<IActionResult> GetById(long id)
         {
             var data = await _productService.GetByIdAsync(id);
@@ -44,18 +44,18 @@ namespace ECommerceApp.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = data.Id }, data);
         }
 
-        [HttpPut("{id:long}")]
-        public async Task<IActionResult> Update(long id, ProductUpdateDto product)
+        [HttpPut("{id:long:min(1)}")]
+        public async Task<IActionResult> Update(long id, [FromBody] ProductUpdateDto product)
         {
-            var data =  await _productService.Update(product);
+                await _productService.UpdateAsync(id, product);
                 //return Ok(data);
                 return NoContent();       
         }
 
-        [HttpDelete("{id:long}")]
+        [HttpDelete("{id:long:min(1)}")]
         public async Task<IActionResult> Delete(long id)
         {
-            await _productService.Delete(id);
+            await _productService.DeleteAsync(id);
             return NoContent();      
           
         }
