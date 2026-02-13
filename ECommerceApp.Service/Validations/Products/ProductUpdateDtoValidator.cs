@@ -12,7 +12,7 @@ namespace ECommerceApp.Service.Validations.Products
     {
         public ProductUpdateDtoValidator()
         {
-            RuleFor(x => x.Id).GreaterThan(0).WithMessage("{PropertyName} is required.");
+            //RuleFor(x => x.Id).GreaterThan(0).WithMessage("{PropertyName} is required.");
             RuleFor(x => x.Name).NotEmpty().WithMessage("{PropertyName} is required.");
             RuleFor(x => x.Price).GreaterThan(0).WithMessage("{PropertyName} must be greater than 0.");
             RuleFor(x => x.Stock).GreaterThanOrEqualTo(0).WithMessage("{PropertyName} must be 0 or more.");

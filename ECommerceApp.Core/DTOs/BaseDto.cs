@@ -8,7 +8,8 @@ namespace ECommerceApp.Core.DTOs
 {
     public abstract class BaseDto
     {
-        public long  Id { get; set; }
+        public long Id { get; set; }
         public DateTime CreatedDate { get; set; }
+        public DateTime? UpdatedDate {get; set;}
     }
 }
