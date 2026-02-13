@@ -11,6 +11,9 @@ namespace ECommerceApp.Core.Interfaces.Services
     public interface ICategoryService
     {
         Task<IEnumerable<CategoryDto>> GetAllAsync();
+        Task<CategoryDto> GetByIdAsync(long id);
         Task<CategoryDto> AddAsync(CategoryCreateDto entity);
+        Task UpdateAsync(long id, CategoryUpdateDto entity);
+        Task DeleteAsync(long id);
     }
 }

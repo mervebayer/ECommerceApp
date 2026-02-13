@@ -23,6 +23,7 @@ namespace ECommerceApp.API.Middlewares
                 var (statusCode, errors) = exception switch
                 {
                     NotFoundException => (StatusCodes.Status404NotFound, null),
+                    BadRequestException => (StatusCodes.Status400BadRequest, null),
                     ValidationException e => (StatusCodes.Status400BadRequest, (object)e.Errors),
                     UnauthorizedException => (StatusCodes.Status401Unauthorized, null),
                     ForbiddenException => (StatusCodes.Status403Forbidden, null),
