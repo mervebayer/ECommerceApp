@@ -1,4 +1,6 @@
 ﻿using ECommerceApp.Core.Entities;
+using ECommerceApp.Core.Interfaces;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace ECommerceApp.Data
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<AppUser>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options): base(options) {
         }
@@ -20,7 +22,7 @@ namespace ECommerceApp.Data
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            var datas = ChangeTracker.Entries<BaseEntity>();
+            var datas = ChangeTracker.Entries<IBaseEntity>();
 
             foreach (var data in datas)
             {
