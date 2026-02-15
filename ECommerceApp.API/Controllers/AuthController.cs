@@ -29,6 +29,11 @@ namespace ECommerceApp.API.Controllers
             var result = await _authenticationService.CreateTokenByRefreshTokenAsync(refreshToken);
             return Ok(result);
         }
-   
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(UserRegisterDto registerDto)
+        {
+            var result = await _authenticationService.RegisterAsync(registerDto);
+            return Ok(result);
+        }
     }
 }

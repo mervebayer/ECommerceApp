@@ -10,6 +10,6 @@ namespace ECommerceApp.Service.Interfaces
 {
     public interface ITokenService
     {
-        Task<TokenDto> CreateTokenAsync(AppUser appUser);
+        Task<TokenDto> CreateTokenAsync(AppUser appUser, IList<string> roles);
     }
 }

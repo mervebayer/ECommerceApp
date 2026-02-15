@@ -12,6 +12,6 @@ namespace ECommerceApp.Service.Interfaces
     {
         Task<TokenDto> LoginAsync(LoginDto loginDto);
         Task<TokenDto> CreateTokenByRefreshTokenAsync(string refreshToken);
-        
+        Task<UserDto> RegisterAsync(UserRegisterDto registerDto);
     }
 }

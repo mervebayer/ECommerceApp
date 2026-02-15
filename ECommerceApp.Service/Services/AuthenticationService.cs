@@ -3,7 +3,10 @@ using ECommerceApp.Core.DTOs;
 using ECommerceApp.Core.DTOs.Users;
 using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Exceptions;
+using ECommerceApp.Data;
+using ECommerceApp.Service.Extensions;
 using ECommerceApp.Service.Interfaces;
+using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -19,21 +22,28 @@ namespace ECommerceApp.Service.Services
         private readonly UserManager<AppUser> _userManager;
         private readonly ITokenService _tokenService;
         private readonly IMapper _mapper;
-        public AuthenticationService(UserManager<AppUser> userManager, ITokenService tokenService, IMapper mapper)
+        private readonly IValidator<UserRegisterDto> _registerValidator;
+        private readonly AppDbContext _context;
+        public AuthenticationService(UserManager<AppUser> userManager, ITokenService tokenService, IMapper mapper, IValidator<UserRegisterDto> registerValidator, AppDbContext context)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _mapper = mapper;
+            _registerValidator = registerValidator;
+            _context = context;
         }
         public async Task<TokenDto> LoginAsync(LoginDto loginDto)
         {
-            var user = await _userManager.FindByEmailAsync(loginDto.Email);
-            if (user == null) throw new NotFoundException("Invalid email or password.");
+            var user = await _userManager.FindByEmailAsync(loginDto.UsernameOrEmail) ?? await _userManager.FindByNameAsync(loginDto.UsernameOrEmail);
+            if (user == null)      
+                throw new NotFoundException("Invalid username/email or password.");
 
             var isPasswordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
             if (!isPasswordValid) throw new BadRequestException("Invalid email or password.");
 
-            var tokenDto = await _tokenService.CreateTokenAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var tokenDto = await _tokenService.CreateTokenAsync(user, roles);
 
             user.RefreshToken = tokenDto.RefreshToken;
             user.RefreshTokenExpiration = tokenDto.RefreshTokenExpiration;
@@ -48,12 +58,12 @@ namespace ECommerceApp.Service.Services
             var user = await _userManager.Users
                 .SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
 
-            if (user == null || user.RefreshTokenExpiration < DateTime.Now)
+            if (user == null || user.RefreshTokenExpiration < DateTime.UtcNow)
             {
                 throw new UnauthorizedException("Invalid or expired refresh token.");
             }
-
-            var tokenDto = await _tokenService.CreateTokenAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+            var tokenDto = await _tokenService.CreateTokenAsync(user, roles);
 
             user.RefreshToken = tokenDto.RefreshToken;
             user.RefreshTokenExpiration = tokenDto.RefreshTokenExpiration;
@@ -63,6 +73,42 @@ namespace ECommerceApp.Service.Services
             return tokenDto;
         }
 
-   
+        // TODO: change BadRequest to ValidationException 
+        public async Task<UserDto> RegisterAsync(UserRegisterDto registerDto)
+        {
+            var validitionResult = await _registerValidator.ValidateAsync(registerDto);
+            validitionResult.ThrowIfInvalid();
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+    
+            try {
+                var user = _mapper.Map<AppUser>(registerDto);
+
+                var createResult = await _userManager.CreateAsync(user, registerDto.Password);
+                if (!createResult.Succeeded)
+                {
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    throw new BadRequestException($"Registration failed: {errors}");
+                }
+
+                var roleResult = await _userManager.AddToRoleAsync(user, "Customer");
+                if (!roleResult.Succeeded)
+                {
+                    var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                    throw new BadRequestException($"Authorization error: {errors}");
+                }
+
+                await transaction.CommitAsync();
+
+                return _mapper.Map<UserDto>(user);
+            }
+            catch (Exception ex) {
+
+                if (ex is BadRequestException) throw;
+
+                throw new BadRequestException("A technical error occurred during the registration process.");
+            }
+
+        }
     }
 }

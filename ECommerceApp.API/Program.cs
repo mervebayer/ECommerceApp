@@ -74,4 +74,25 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+using (var scope = app.Services.CreateAsyncScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    string[] roleNames = { "Admin", "Customer", "StoreManager" };
+    foreach(var roleName in roleNames)
+    {
+        if(!await roleManager.RoleExistsAsync(roleName)){
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+    var configuration = services.GetRequiredService<IConfiguration>(); 
+    await IdentitySeedData.SeedAsync(userManager, roleManager, configuration);
+}
 app.Run();

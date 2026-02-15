@@ -19,16 +19,13 @@ namespace ECommerceApp.Service.Services
     public class TokenService : ITokenService
     {
         private readonly JwtSettings _jwtSettings;
-        private readonly UserManager<AppUser> _userManager;
-        public TokenService(IOptions<JwtSettings> jwtSettings, UserManager<AppUser> userManager)
+        public TokenService(IOptions<JwtSettings> jwtSettings)
         {
             _jwtSettings = jwtSettings.Value;
-            _userManager = userManager;
-        }
-        public async Task<TokenDto> CreateTokenAsync(AppUser appUser)
-        {
-            var roles = await _userManager.GetRolesAsync(appUser);
 
+        }
+        public async Task<TokenDto> CreateTokenAsync(AppUser appUser, IList<string> roles)
+        {
             var claims = GetClaims(appUser, roles.ToList());
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecurityKey));
@@ -38,7 +35,7 @@ namespace ECommerceApp.Service.Services
                 issuer: _jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(_jwtSettings.AccessTokenExpiration),
+                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpiration),
                 signingCredentials: creds
             );
 
@@ -50,15 +47,16 @@ namespace ECommerceApp.Service.Services
                 AccessToken = accessToken,
                 AccessTokenExpiration = tokenDescriptor.ValidTo,
                 RefreshToken = refreshToken,
-                RefreshTokenExpiration = DateTime.Now.AddMinutes(_jwtSettings.RefreshTokenExpiration)
+                RefreshTokenExpiration = DateTime.UtcNow.AddMinutes(_jwtSettings.RefreshTokenExpiration)
             };
         }
-        private IEnumerable<Claim> GetClaims(AppUser user, List<string> roles)
+        private IEnumerable<Claim> GetClaims(AppUser user, IList<string> roles)
         {
             var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id),
                     new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.UserName),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 };
 
