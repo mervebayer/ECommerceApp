@@ -38,7 +38,7 @@ namespace ECommerceApp.API.Middlewares
                     StatusCode = statusCode,
                     Message = exception.Message,
                     Path = httpContext.Request.Path,
-                    Timestamp = DateTime.Now,
+                    Timestamp = DateTime.UtcNow,
                     TraceId = httpContext.TraceIdentifier,
                     Errors = errors
                 };
