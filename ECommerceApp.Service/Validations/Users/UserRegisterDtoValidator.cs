@@ -27,15 +27,17 @@ namespace ECommerceApp.Service.Validations.Users
                                       .MaximumLength(500).WithMessage("Address cannot exceed 500 characters.");
             RuleFor(x => x.UserName).NotEmpty().WithMessage("UserName is required.")
                                       .MinimumLength(4).WithMessage("UserName must be at least 4 characters.")
-                                      .MaximumLength(20).WithMessage("UserName cannot exceed 20 characters.");
-            RuleFor(x => x.Email).NotEmpty().EmailAddress();
+                                      .MaximumLength(20).WithMessage("UserName cannot exceed 20 characters.")
+                                      .Matches(@"^[a-zA-Z0-9._]+$").WithMessage("UserName can only contain letters, numbers, dot and underscore.");
+            RuleFor(x => x.Email).NotEmpty().WithMessage("Email is required.")
+                                 .EmailAddress().WithMessage("Email is not a valid email address.");
             RuleFor(x => x.Password).NotEmpty().WithMessage("Password is required.")
                                      .MinimumLength(6).WithMessage("Password must be at least 6 characters.")
                                      .MaximumLength(25).WithMessage("Password cannot exceed 25 characters.")
                                      .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
                                      .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.")
                                      .Matches(@"[0-9]").WithMessage("Password must contain at least one number.")
-                                     .Matches(@"[#$@^&]").WithMessage("Password must contain at least one special character.");
+                                     .Matches(@"[#$@^&.]").WithMessage("Password must contain at least one special character.");
 
         }
     }

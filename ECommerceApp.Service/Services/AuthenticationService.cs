@@ -76,12 +76,24 @@ namespace ECommerceApp.Service.Services
         // TODO: change BadRequest to ValidationException 
         public async Task<UserDto> RegisterAsync(UserRegisterDto registerDto)
         {
-            var validitionResult = await _registerValidator.ValidateAsync(registerDto);
-            validitionResult.ThrowIfInvalid();
+            var validationResult = await _registerValidator.ValidateAsync(registerDto);
+            validationResult.ThrowIfInvalid();
+
+            var userExists = await _userManager.FindByNameAsync(registerDto.UserName);
+            if (userExists != null)
+                throw new BadRequestException("UserName already taken.");
+
+            if (!string.IsNullOrWhiteSpace(registerDto.Email))
+            {
+                var emailExists = await _userManager.FindByEmailAsync(registerDto.Email);
+                if (emailExists != null)
+                    throw new BadRequestException("Email already taken.");
+            }
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
-    
-            try {
+            try
+            {
+
                 var user = _mapper.Map<AppUser>(registerDto);
 
                 var createResult = await _userManager.CreateAsync(user, registerDto.Password);
@@ -94,21 +106,21 @@ namespace ECommerceApp.Service.Services
                 var roleResult = await _userManager.AddToRoleAsync(user, "Customer");
                 if (!roleResult.Succeeded)
                 {
+                    await _userManager.DeleteAsync(user);
                     var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
                     throw new BadRequestException($"Authorization error: {errors}");
                 }
-
                 await transaction.CommitAsync();
 
                 return _mapper.Map<UserDto>(user);
             }
-            catch (Exception ex) {
-
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
                 if (ex is BadRequestException) throw;
 
                 throw new BadRequestException("A technical error occurred during the registration process.");
-            }
-
+            }         
         }
     }
 }
