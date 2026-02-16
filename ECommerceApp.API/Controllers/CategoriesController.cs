@@ -1,6 +1,7 @@
 ﻿using ECommerceApp.Core.DTOs.Categories;
 using ECommerceApp.Core.Interfaces.Services;
 using ECommerceApp.Service.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerceApp.API.Controllers
@@ -17,12 +18,14 @@ namespace ECommerceApp.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin,StoreManager,Customer")]
         public async Task<IActionResult> Get()
         {
             var data = await _categoryService.GetAllAsync();
             return Ok(data);
         }
         [HttpGet("{id:long:min(1)}")]
+        [Authorize(Roles = "Admin,StoreManager,Customer")]
         public async Task<IActionResult> GetById(long id)
         {
             var data = await _categoryService.GetByIdAsync(id);
@@ -31,12 +34,14 @@ namespace ECommerceApp.API.Controllers
 
 
         [HttpPost]
+        [Authorize(Roles = "Admin,StoreManager")]
         public async Task<IActionResult> Create(CategoryCreateDto entity) { 
             var data = await _categoryService.AddAsync(entity);
             return StatusCode(201, data);
         }
 
         [HttpPut("{id:long:min(1)}")]
+        [Authorize(Roles = "Admin,StoreManager")]
         public async Task<IActionResult> Update(long id, CategoryUpdateDto entity)
         {
             await _categoryService.UpdateAsync(id, entity);
@@ -45,6 +50,7 @@ namespace ECommerceApp.API.Controllers
 
 
         [HttpDelete("{id:long:min(1)}")]
+        [Authorize(Roles = "Admin,StoreManager")]
         public async Task<IActionResult> Delete(long id)
         {
             await _categoryService.DeleteAsync(id);
