@@ -13,6 +13,8 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+appsettings.*.json
+
 # Mono auto generated files
 mono_crash.*
 
@@ -98,6 +100,7 @@ StyleCopReport.xml
 *.svclog
 *.scc
 
+**/Logs/
 # Chutzpah Test files
 _Chutzpah*
 
