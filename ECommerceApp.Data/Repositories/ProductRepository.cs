@@ -26,7 +26,7 @@ namespace ECommerceApp.Core.Interfaces.Repositories
         
         public async Task<IEnumerable<Product>> GetAllWithCategoriesAsync(int pageSize, int pageNumber, ProductSortType sortType)
         {
-            IQueryable<Product> query = _context.Products.Include(x => x.Category);
+            IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category);
 
             return await query.SortBy(sortType)
                         .ToPagedList(pageNumber, pageSize)

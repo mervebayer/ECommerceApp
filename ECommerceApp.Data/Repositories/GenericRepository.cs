@@ -25,7 +25,7 @@ namespace ECommerceApp.Data.Repositories
         }
         public async Task<IEnumerable<T>> GetAllAsync()
         {
-            return await _dbSet.ToListAsync();
+            return await _dbSet.AsNoTracking().ToListAsync();
         }
         public async Task AddAsync(T entity)
         {
