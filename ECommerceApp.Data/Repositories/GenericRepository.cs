@@ -57,5 +57,10 @@ namespace ECommerceApp.Data.Repositories
         {
             return _dbSet.Where(expression);         
         }
+
+        public async Task<bool> AnyAsync(Expression<Func<T, bool>> expression)
+        {
+            return await _dbSet.AnyAsync(expression);
+        }
     }
 }

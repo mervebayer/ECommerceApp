@@ -15,5 +15,6 @@ namespace ECommerceApp.Core.Interfaces.Repositories
         Task AddAsync(T entity);
         void Update(T entity);
         void Delete(T entity);
+        Task<bool> AnyAsync(Expression<Func<T, bool>> expression);
     }
 }

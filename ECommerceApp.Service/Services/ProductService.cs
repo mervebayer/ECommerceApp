@@ -28,22 +28,20 @@ namespace ECommerceApp.Service.Services
             _updateValidator = updateValidator;
         }
 
-        public async Task<IEnumerable<ProductDto>> GetAllAsync(int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
+        public async Task<IEnumerable<ProductListDto>> GetAllAsync(int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
         {
-            var data = await _productRepository.GetAllWithCategoriesAsync(pageSize, pageNumber, sortType);
-            return _mapper.Map<IEnumerable<ProductDto>>(data);
+            return await _productRepository.GetProductList(pageSize, pageNumber, sortType);
         }
         public async Task<ProductDto> GetByIdAsync(long id)
         {
-            var data = await _productRepository.GetByIdWithCategoryAsync(id) ??
+            var data = await _productRepository.GetProductByIdAsync(id) ??
                 throw new NotFoundException($"Product with Id {id} was not found.");
             return _mapper.Map<ProductDto>(data);
         }
 
-        public async Task<IEnumerable<ProductDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
+        public async Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest)
         {
-            var data = await _productRepository.GetProductsByCategoryIdAsync(categoryId, pageSize, pageNumber, sortType);
-            return _mapper.Map<IEnumerable<ProductDto>>(data);
+            return await _productRepository.GetProductsByCategoryIdAsync(categoryId, pageSize, pageNumber, sortType);
         }
 
         public async Task<ProductDto> AddAsync(ProductCreateDto entity)
@@ -54,7 +52,7 @@ namespace ECommerceApp.Service.Services
             var data = _mapper.Map<Product>(entity);
             await _productRepository.AddAsync(data);
             await _unitOfWork.CommitAsync();
-            var product = await _productRepository.GetByIdWithCategoryAsync(data.Id) ??
+            var product = await _productRepository.GetProductByIdAsync(data.Id) ??
                 throw new NotFoundException($"Product with Id {data.Id} could not be loaded after creation.");       
             return _mapper.Map<ProductDto>(product);
         }
@@ -82,21 +80,6 @@ namespace ECommerceApp.Service.Services
             _productRepository.Delete(data);
             await _unitOfWork.CommitAsync();
         }
-
-        //public async Task<ProductDto> Update(long id, ProductUpdateDto entity)
-        //{
-        //    var validationResult = await _updateValidator.ValidateAsync(entity);
-        //    validationResult.ThrowIfInvalid();
-
-        //    var data = await _product.GetByIdAsync(id);
-        //    if (data == null) 
-        //        throw new NotFoundException($"Product with Id {id} was not found.");
-
-        //    var product = _mapper.Map(entity, data);
-        //    _product.Update(product);
-        //    await _unitOfWork.CommitAsync();
-        //    return _mapper.Map<ProductDto>(product);
-        //}
 
 
         #region WithoutCategory

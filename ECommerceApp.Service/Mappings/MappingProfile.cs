@@ -15,7 +15,9 @@ namespace ECommerceApp.Service.Mappings
     {
         public MappingProfile()
         {
-            CreateMap<Product, ProductDto>().ReverseMap();
+            CreateMap<Product, ProductDto>()
+                .ForMember(d => d.CategoryName, opt => opt.MapFrom(s => s.Category.Name));
+            //CreateMap<Product, ProductDto>().ReverseMap();
             CreateMap<ProductCreateDto, Product>();
             CreateMap<ProductCreateDto, ProductDto>();
             CreateMap<ProductUpdateDto, Product>();
@@ -24,6 +26,7 @@ namespace ECommerceApp.Service.Mappings
             CreateMap<CategoryUpdateDto, Category>();
             CreateMap<UserRegisterDto, AppUser>();
             CreateMap<AppUser, UserDto>();
+            CreateMap<ProductImage, ProductImageDto>();
         }
     }
 }

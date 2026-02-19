@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Core.Entities;
+﻿using ECommerceApp.Core.DTOs.Products;
+using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Enums;
 using System;
 using System.Collections.Generic;
@@ -10,8 +11,9 @@ namespace ECommerceApp.Core.Interfaces.Repositories
 {
     public interface IProductRepository : IGenericRepository<Product>
     {
-        Task<IEnumerable<Product>> GetAllWithCategoriesAsync(int pageSize, int pageNumber, ProductSortType sortType);
-        Task<Product> GetByIdWithCategoryAsync(long id, CancellationToken cancellationToken = default);
-        Task<IEnumerable<Product>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType);
+        Task<IEnumerable<ProductListDto>> GetProductList(int pageSize, int pageNumber, ProductSortType sortType);
+        Task<IEnumerable<Product>> GetAllWithCategoriesWithoutImageAsync(int pageSize, int pageNumber, ProductSortType sortType);
+        Task<Product> GetProductByIdAsync(long id, CancellationToken cancellationToken = default);
+        Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType);
     }
 }

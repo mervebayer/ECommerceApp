@@ -12,14 +12,14 @@ namespace ECommerceApp.Core.Interfaces.Services
 {
     public interface IProductService
     {
-        Task<IEnumerable<ProductDto>> GetAllAsync(int pageSize, int pageNumber, ProductSortType sortType);
+        Task<IEnumerable<ProductListDto>> GetAllAsync(int pageSize, int pageNumber, ProductSortType sortType);
         Task<ProductDto> GetByIdAsync(long id);
         Task<ProductDto> GetByIdWithoutCategoryAsync(long id);
         Task<ProductDto> AddAsync(ProductCreateDto entity);
         //Task<ProductDto> Update(long id, ProductUpdateDto entity);
         Task UpdateAsync(long id, ProductUpdateDto entity);
         Task DeleteAsync(long id);
-        Task<IEnumerable<ProductDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType);  
+        Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType);  
           
     }
 }

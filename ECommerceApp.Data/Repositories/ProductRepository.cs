@@ -1,5 +1,7 @@
-﻿using ECommerceApp.Core.Entities;
+﻿using ECommerceApp.Core.DTOs.Products;
+using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Enums;
+using ECommerceApp.Core.Extensions;
 using ECommerceApp.Data;
 using ECommerceApp.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +11,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
-using ECommerceApp.Core.Extensions;
 
 
 namespace ECommerceApp.Core.Interfaces.Repositories
@@ -23,28 +24,58 @@ namespace ECommerceApp.Core.Interfaces.Repositories
             _context = context;
         }
 
-        
-        public async Task<IEnumerable<Product>> GetAllWithCategoriesAsync(int pageSize, int pageNumber, ProductSortType sortType)
+        // TODO: CQRS
+        public async Task<IEnumerable<ProductListDto>> GetProductList(int pageSize, int pageNumber, ProductSortType sortType)
+        {
+            IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category);
+
+            query = query.SortBy(sortType).ToPagedList(pageNumber, pageSize);
+
+            return await query.Select(p => new ProductListDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Stock = p.Stock,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                MainImageUrl = p.Images.Where(i => i.IsMain).Select(i => i.Url).FirstOrDefault(),
+                CreatedDate = p.CreatedDate,
+                UpdatedDate = p.UpdatedDate
+            }).ToListAsync();
+
+        }
+
+        public async Task<Product> GetProductByIdAsync(long id, CancellationToken cancellationToken)
+        {
+            return await _context.Products.Include(x => x.Category).Include(x => x.Images).SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        }
+
+        public async Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType = ProductSortType.Newest)
+        {
+            IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category).Where(x => x.CategoryId == categoryId);
+
+            query = query.SortBy(sortType).ToPagedList(pageNumber, pageSize);
+
+            return await query.Select(p => new ProductListDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Stock = p.Stock,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                MainImageUrl = p.Images.Where(i => i.IsMain).Select(i => i.Url).FirstOrDefault(),
+                CreatedDate = p.CreatedDate,
+                UpdatedDate = p.UpdatedDate
+            }).ToListAsync();     
+        }
+
+        public async Task<IEnumerable<Product>> GetAllWithCategoriesWithoutImageAsync(int pageSize, int pageNumber, ProductSortType sortType)
         {
             IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category);
 
             return await query.SortBy(sortType)
                         .ToPagedList(pageNumber, pageSize)
                         .ToListAsync();
-        }
-
-        public async Task<Product> GetByIdWithCategoryAsync(long id, CancellationToken cancellationToken)
-        {
-            return await _context.Products.Include(x => x.Category).SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-        }
-
-        public async Task<IEnumerable<Product>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType = ProductSortType.Newest)
-        {
-            var query = _context.Products.Include(x => x.Category).Where(x => x.CategoryId == categoryId);
-
-            return await query.SortBy(sortType)
-                              .ToPagedList(pageNumber, pageSize)
-                              .ToListAsync();         
         }
 
     }

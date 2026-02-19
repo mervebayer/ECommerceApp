@@ -4,6 +4,7 @@ using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Interfaces;
 using ECommerceApp.Core.Interfaces.Repositories;
 using ECommerceApp.Core.Interfaces.Services;
+using ECommerceApp.Core.Models;
 using ECommerceApp.Data;
 using ECommerceApp.Data.Repositories;
 using ECommerceApp.Service.Interfaces;
@@ -74,6 +75,7 @@ try
     builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
     builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
     builder.Services.AddScoped<IProductRepository, ProductRepository>();
+    builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
     builder.Services.AddScoped<IProductService, ProductService>();
     builder.Services.AddScoped<ICategoryService, CategoryService>();
     builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -95,6 +97,9 @@ try
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(secretKey)
     });
+    builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
+    builder.Services.AddScoped<IImageStorage, CloudinaryImageStorage>();
+    builder.Services.AddScoped<IProductImageService, ProductImageService>();
 
 
     var app = builder.Build();

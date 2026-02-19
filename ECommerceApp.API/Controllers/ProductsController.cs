@@ -1,6 +1,7 @@
 ﻿using ECommerceApp.Core.DTOs.Products;
 using ECommerceApp.Core.Enums;
 using ECommerceApp.Core.Interfaces.Services;
+using ECommerceApp.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,10 +12,12 @@ namespace ECommerceApp.API.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly IProductImageService _productImageService;
 
-        public ProductsController(IProductService productService)
+        public ProductsController(IProductService productService, IProductImageService productImageService)
         {
             _productService = productService;
+            _productImageService = productImageService;
         }
 
         [HttpGet]
@@ -65,6 +68,40 @@ namespace ECommerceApp.API.Controllers
             return NoContent();      
           
         }
-             
+
+        [HttpPost("{id:long}/images")]
+        [Authorize(Roles = "Admin,StoreManager")]
+        public async Task<IActionResult> UploadImage(long id, IFormFile file, CancellationToken ct)
+        {
+            if (file is null || file.Length == 0) return BadRequest("File is required.");
+
+            await using var stream = file.OpenReadStream();
+            var dto = new ImageUploadDto
+            {
+                Content = stream,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                Length = file.Length
+            };
+            var result = await _productImageService.AddImageAsync(id, dto, ct);
+            return Ok(result);
+        }
+
+        [Authorize(Roles = "Admin,StoreManager")]
+        [HttpDelete("{productId:long}/images/{imageId:long}")]
+        public async Task<IActionResult> DeleteImage(long productId, long imageId, CancellationToken ct)
+        {
+            await _productImageService.DeleteImageAsync(productId, imageId, ct);
+            return NoContent();
+        }
+
+        [Authorize(Roles = "Admin,StoreManager")]
+        [HttpPut("{productId:long}/images/{imageId:long}/main")]
+        public async Task<IActionResult> SetMainImage(long productId, long imageId, CancellationToken ct)
+        {
+            await _productImageService.SetMainImageAsync(productId, imageId, ct);
+            return NoContent();
+        }
+
     }
 }

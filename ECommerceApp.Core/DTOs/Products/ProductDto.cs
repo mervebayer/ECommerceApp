@@ -12,5 +12,7 @@ namespace ECommerceApp.Core.DTOs.Products
         public decimal Price { get; set; }
         public int Stock { get; set; }
         public string CategoryName { get; set; }
+        public ICollection<ProductImageDto> Images { get; set; } = new List<ProductImageDto>();
+
     }
 }
