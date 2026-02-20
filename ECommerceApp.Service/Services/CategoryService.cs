@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using ECommerceApp.Core.DTOs.Categories;
-using ECommerceApp.Core.DTOs.Products;
 using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Exceptions;
 using ECommerceApp.Core.Interfaces;
@@ -14,7 +13,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ECommerceApp.Service.Services
 {
@@ -37,58 +35,58 @@ namespace ECommerceApp.Service.Services
             _productRepository = productRepository;
         }
 
-        public async Task<IEnumerable<CategoryDto>> GetAllAsync()
+        public async Task<IEnumerable<CategoryDto>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            var data = await _categoryRepository.GetAllAsync();
+            var data = await _categoryRepository.GetAllAsync(cancellationToken);
             return _mapper.Map<IEnumerable<CategoryDto>>(data);
         }
 
-        public async Task<CategoryDto> GetByIdAsync(long id)
+        public async Task<CategoryDto> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
-            var data = await _categoryRepository.GetByIdAsync(id) ??
+            var data = await _categoryRepository.GetByIdAsync(id, cancellationToken) ??
                 throw new NotFoundException($"Category with Id {id} was not found.");
             return _mapper.Map<CategoryDto>(data);
         }
 
-        public async Task<CategoryDto> AddAsync(CategoryCreateDto entity)
+        public async Task<CategoryDto> AddAsync(CategoryCreateDto entity, CancellationToken cancellationToken)
         {
-            var validationResult = await _createValidator.ValidateAsync(entity);
+            var validationResult = await _createValidator.ValidateAsync(entity, cancellationToken);
             validationResult.ThrowIfInvalid();
 
             var data = _mapper.Map<Category>(entity);
-            await _categoryRepository.AddAsync(data);
-            await _unitOfWork.CommitAsync();
+            await _categoryRepository.AddAsync(data, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
             return _mapper.Map<CategoryDto>(data);
         }
 
-        public async Task UpdateAsync(long id, CategoryUpdateDto entity)
+        public async Task UpdateAsync(long id, CategoryUpdateDto entity, CancellationToken cancellationToken)
         {
             entity.Id = id;
-            var data = await _categoryRepository.GetByIdAsync(id) ??
+            var data = await _categoryRepository.GetByIdAsync(id, cancellationToken) ??
                 throw new NotFoundException($"Category with Id {id} was not found.");
     
 
-            var validationResult = await _updateValidator.ValidateAsync(entity);
+            var validationResult = await _updateValidator.ValidateAsync(entity, cancellationToken);
             validationResult.ThrowIfInvalid();
 
             var category = _mapper.Map(entity, data);
             _categoryRepository.Update(category);
-            await _unitOfWork.CommitAsync();
+            await _unitOfWork.CommitAsync(cancellationToken);
 
         }
 
-        public async Task DeleteAsync(long id)
+        public async Task DeleteAsync(long id, CancellationToken cancellationToken)
         {
-            var data = await _categoryRepository.GetByIdAsync(id) ??
+            var data = await _categoryRepository.GetByIdAsync(id, cancellationToken) ??
                 throw new NotFoundException($"Category with Id {id} was not found.");
 
-            var hasProducts = await _productRepository.Where(x => x.CategoryId == id).AnyAsync();
+            var hasProducts = await _productRepository.AnyAsync(x => x.CategoryId == id, cancellationToken);
 
             if (hasProducts)
-                throw new Core.Exceptions.BadRequestException("This category cannot be deleted because it contains active products.");
+                throw new BadRequestException("This category cannot be deleted because it contains active products.");
 
             _categoryRepository.Delete(data);
-            await _unitOfWork.CommitAsync();
+            await _unitOfWork.CommitAsync(cancellationToken);
         }
         
     }

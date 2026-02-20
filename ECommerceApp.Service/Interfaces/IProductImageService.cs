@@ -9,8 +9,8 @@ namespace ECommerceApp.Service.Interfaces
 {
     public interface IProductImageService
     {
-        Task<ProductImageDto> AddImageAsync(long productId, ImageUploadDto image, CancellationToken ct);
-        Task DeleteImageAsync(long productId, long imageId, CancellationToken ct);
-        Task SetMainImageAsync(long productId, long imageId, CancellationToken ct);
+        Task<ProductImageDto> AddImageAsync(long productId, ImageUploadDto image, CancellationToken cancellationToken = default);
+        Task DeleteImageAsync(long productId, long imageId, CancellationToken cancellationToken = default);
+        Task SetMainImageAsync(long productId, long imageId, CancellationToken cancellationToken = default);
     }
 }

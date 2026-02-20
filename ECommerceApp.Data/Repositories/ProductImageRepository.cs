@@ -18,23 +18,23 @@ namespace ECommerceApp.Data.Repositories
             _context = context;
         }
 
-        public async Task<int> CountByProductIdAsync(long productId) {
-            return await _context.ProductImages.CountAsync(x => x.ProductId == productId);
+        public async Task<int> CountByProductIdAsync(long productId, CancellationToken cancellationToken = default) {
+            return await _context.ProductImages.CountAsync(x => x.ProductId == productId, cancellationToken);
         }
 
-        public async Task<List<ProductImage>> GetByProductIdAsync(long productId)
+        public async Task<List<ProductImage>> GetByProductIdAsync(long productId, CancellationToken cancellationToken = default)
         {
             return await _context.ProductImages
                 .Where(x => x.ProductId == productId) 
                 .OrderByDescending(x => x.IsMain)
                 .ThenByDescending(x => x.Id)
-                .ToListAsync(); 
+                .ToListAsync(cancellationToken); 
         }
 
-        public async Task<ProductImage?> GetByIdWithProductAsync(long id)
+        public async Task<ProductImage?> GetByIdWithProductAsync(long id, CancellationToken cancellationToken = default)
         { 
             return await _context.ProductImages.Include(x => x.Product)
-                        .FirstOrDefaultAsync(x => x.Id == id);
+                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
     }
 

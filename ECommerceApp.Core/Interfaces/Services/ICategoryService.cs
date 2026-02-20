@@ -10,10 +10,10 @@ namespace ECommerceApp.Core.Interfaces.Services
 {
     public interface ICategoryService
     {
-        Task<IEnumerable<CategoryDto>> GetAllAsync();
-        Task<CategoryDto> GetByIdAsync(long id);
-        Task<CategoryDto> AddAsync(CategoryCreateDto entity);
-        Task UpdateAsync(long id, CategoryUpdateDto entity);
-        Task DeleteAsync(long id);
+        Task<IEnumerable<CategoryDto>> GetAllAsync(CancellationToken cancellationToken = default);
+        Task<CategoryDto> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+        Task<CategoryDto> AddAsync(CategoryCreateDto entity, CancellationToken cancellationToken = default);
+        Task UpdateAsync(long id, CategoryUpdateDto entity, CancellationToken cancellationToken = default);
+        Task DeleteAsync(long id, CancellationToken cancellationToken = default);
     }
 }

@@ -8,7 +8,7 @@ namespace ECommerceApp.Core.Interfaces
 {
     public interface IUnitOfWork
     {
-        Task CommitAsync();
+        Task CommitAsync(CancellationToken cancellationToken);
         void Commit();
     }
 }

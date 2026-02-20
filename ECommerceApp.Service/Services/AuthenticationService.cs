@@ -32,16 +32,18 @@ namespace ECommerceApp.Service.Services
             _registerValidator = registerValidator;
             _context = context;
         }
-        public async Task<TokenDto> LoginAsync(LoginDto loginDto)
+        public async Task<TokenDto> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken = default)
         {
             var user = await _userManager.FindByEmailAsync(loginDto.UsernameOrEmail) ?? await _userManager.FindByNameAsync(loginDto.UsernameOrEmail);
             if (user == null)      
-                throw new NotFoundException("Invalid username/email or password.");
+                throw new UnauthorizedException("Invalid username/email or password.");
 
             var isPasswordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
-            if (!isPasswordValid) throw new BadRequestException("Invalid email or password.");
+            if (!isPasswordValid) throw new BadRequestException("Invalid username/email or password.");
 
             var roles = await _userManager.GetRolesAsync(user);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             var tokenDto = await _tokenService.CreateTokenAsync(user, roles);
 
@@ -53,10 +55,10 @@ namespace ECommerceApp.Service.Services
             return tokenDto;
         }
 
-        public async Task<TokenDto> CreateTokenByRefreshTokenAsync(string refreshToken)
+        public async Task<TokenDto> CreateTokenByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
         {
             var user = await _userManager.Users
-                .SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
+                .SingleOrDefaultAsync(u => u.RefreshToken == refreshToken, cancellationToken);
 
             if (user == null || user.RefreshTokenExpiration < DateTime.UtcNow)
             {
@@ -74,9 +76,9 @@ namespace ECommerceApp.Service.Services
         }
 
         // TODO: change BadRequest to ValidationException 
-        public async Task<UserDto> RegisterAsync(UserRegisterDto registerDto)
+        public async Task<UserDto> RegisterAsync(UserRegisterDto registerDto, CancellationToken cancellationToken = default)
         {
-            var validationResult = await _registerValidator.ValidateAsync(registerDto);
+            var validationResult = await _registerValidator.ValidateAsync(registerDto, cancellationToken);
             validationResult.ThrowIfInvalid();
 
             var userExists = await _userManager.FindByNameAsync(registerDto.UserName);
@@ -90,7 +92,7 @@ namespace ECommerceApp.Service.Services
                     throw new BadRequestException("Email already taken.");
             }
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
             try
             {
 
@@ -110,13 +112,14 @@ namespace ECommerceApp.Service.Services
                     var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
                     throw new BadRequestException($"Authorization error: {errors}");
                 }
-                await transaction.CommitAsync();
+                await transaction.CommitAsync(cancellationToken);
 
                 return _mapper.Map<UserDto>(user);
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(CancellationToken.None);
                 if (ex is BadRequestException) throw;
 
                 throw new BadRequestException("A technical error occurred during the registration process.");

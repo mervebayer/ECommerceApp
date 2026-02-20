@@ -19,17 +19,17 @@ namespace ECommerceApp.Data.Repositories
             _dbSet = _context.Set<T>();
 
         }
-        public async Task<T> GetByIdAsync(long id)
+        public async Task<T> GetByIdAsync(long id, CancellationToken cancellationToken)
         {
-            return await _dbSet.FindAsync(id);      
+            return await _dbSet.FindAsync(id, cancellationToken);      
         }
-        public async Task<IEnumerable<T>> GetAllAsync()
+        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken)
         {
-            return await _dbSet.AsNoTracking().ToListAsync();
+            return await _dbSet.AsNoTracking().ToListAsync(cancellationToken);
         }
-        public async Task AddAsync(T entity)
+        public async Task AddAsync(T entity, CancellationToken cancellationToke)
         {
-            await _dbSet.AddAsync(entity);
+            await _dbSet.AddAsync(entity, cancellationToke);
         }
         public void Update(T entity)
         {
@@ -58,9 +58,9 @@ namespace ECommerceApp.Data.Repositories
             return _dbSet.Where(expression);         
         }
 
-        public async Task<bool> AnyAsync(Expression<Func<T, bool>> expression)
+        public async Task<bool> AnyAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToke)
         {
-            return await _dbSet.AnyAsync(expression);
+            return await _dbSet.AnyAsync(expression, cancellationToke);
         }
     }
 }

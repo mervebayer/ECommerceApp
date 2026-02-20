@@ -21,9 +21,9 @@ namespace ECommerceApp.Data.Repositories
             _context.SaveChanges();
         }
 
-        public async Task CommitAsync()
+        public async Task CommitAsync(CancellationToken cancellationToken)
         {
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using ECommerceApp.Core.DTOs.Products;
-using ECommerceApp.Core.Entities;
 using ECommerceApp.Core.Enums;
 using System;
 using System.Collections.Generic;
@@ -12,14 +11,14 @@ namespace ECommerceApp.Core.Interfaces.Services
 {
     public interface IProductService
     {
-        Task<IEnumerable<ProductListDto>> GetAllAsync(int pageSize, int pageNumber, ProductSortType sortType);
-        Task<ProductDto> GetByIdAsync(long id);
-        Task<ProductDto> GetByIdWithoutCategoryAsync(long id);
-        Task<ProductDto> AddAsync(ProductCreateDto entity);
+        Task<IEnumerable<ProductListDto>> GetAllAsync(int pageSize, int pageNumber, ProductSortType sortType, CancellationToken cancellationToken);
+        Task<ProductDto> GetByIdAsync(long id, CancellationToken cancellationToken);
+        Task<ProductDto> GetByIdWithoutCategoryAsync(long id, CancellationToken cancellationToken);
+        Task<ProductDto> AddAsync(ProductCreateDto entity, CancellationToken cancellationToken);
         //Task<ProductDto> Update(long id, ProductUpdateDto entity);
-        Task UpdateAsync(long id, ProductUpdateDto entity);
-        Task DeleteAsync(long id);
-        Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType);  
+        Task UpdateAsync(long id, ProductUpdateDto entity, CancellationToken cancellationToken);
+        Task DeleteAsync(long id, CancellationToken cancellationToken);
+        Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType, CancellationToken cancellationToken);  
           
     }
 }

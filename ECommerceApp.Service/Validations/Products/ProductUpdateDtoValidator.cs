@@ -24,7 +24,7 @@ namespace ECommerceApp.Service.Validations.Products
             RuleFor(x => x.CategoryId).GreaterThan(0).WithMessage("{PropertyName} is required.");
             RuleFor(x => x.CategoryId)
                 .MustAsync(async (id, ct) =>
-                    await _categoryRepository.AnyAsync(x => x.Id == id))
+                    await _categoryRepository.AnyAsync(x => x.Id == id, ct))
                 .WithMessage("Category not found.");
            
         }

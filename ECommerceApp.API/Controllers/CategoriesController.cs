@@ -19,41 +19,41 @@ namespace ECommerceApp.API.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin,StoreManager,Customer")]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var data = await _categoryService.GetAllAsync();
+            var data = await _categoryService.GetAllAsync(cancellationToken);
             return Ok(data);
         }
         [HttpGet("{id:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager,Customer")]
-        public async Task<IActionResult> GetById(long id)
+        public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         {
-            var data = await _categoryService.GetByIdAsync(id);
+            var data = await _categoryService.GetByIdAsync(id, cancellationToken);
             return Ok(data);
         }
 
 
         [HttpPost]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> Create(CategoryCreateDto entity) { 
-            var data = await _categoryService.AddAsync(entity);
+        public async Task<IActionResult> Create([FromBody] CategoryCreateDto entity, CancellationToken cancellationToken) { 
+            var data = await _categoryService.AddAsync(entity, cancellationToken);
             return StatusCode(201, data);
         }
 
         [HttpPut("{id:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> Update(long id, CategoryUpdateDto entity)
+        public async Task<IActionResult> Update(long id, [FromBody] CategoryUpdateDto entity, CancellationToken cancellationToken)
         {
-            await _categoryService.UpdateAsync(id, entity);
+            await _categoryService.UpdateAsync(id, entity, cancellationToken);
             return NoContent();
         }
 
 
         [HttpDelete("{id:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> Delete(long id)
+        public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
         {
-            await _categoryService.DeleteAsync(id);
+            await _categoryService.DeleteAsync(id, cancellationToken);
             return NoContent();
 
         }

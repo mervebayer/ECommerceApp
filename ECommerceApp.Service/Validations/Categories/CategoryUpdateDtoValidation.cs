@@ -22,11 +22,11 @@ namespace ECommerceApp.Service.Validations.Categories
                                 .MustAsync(BeUniqueName).WithMessage("A category with this name already exists.");
         }
 
-        private async Task<bool> BeUniqueName(CategoryUpdateDto dto, string name, CancellationToken token)
+        private async Task<bool> BeUniqueName(CategoryUpdateDto dto, string name, CancellationToken cancellationToken)
         {
             bool exists = await _categoryRepository
                 .Where(x => x.Name == name && x.Id != dto.Id)
-                .AnyAsync(token);
+                .AnyAsync(cancellationToken);
             return !exists;
         }
     }

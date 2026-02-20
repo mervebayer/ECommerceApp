@@ -25,7 +25,7 @@ namespace ECommerceApp.Core.Interfaces.Repositories
         }
 
         // TODO: CQRS
-        public async Task<IEnumerable<ProductListDto>> GetProductList(int pageSize, int pageNumber, ProductSortType sortType)
+        public async Task<IEnumerable<ProductListDto>> GetProductList(int pageSize, int pageNumber, ProductSortType sortType, CancellationToken cancellationToken = default)
         {
             IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category);
 
@@ -41,16 +41,16 @@ namespace ECommerceApp.Core.Interfaces.Repositories
                 MainImageUrl = p.Images.Where(i => i.IsMain).Select(i => i.Url).FirstOrDefault(),
                 CreatedDate = p.CreatedDate,
                 UpdatedDate = p.UpdatedDate
-            }).ToListAsync();
+            }).ToListAsync(cancellationToken);
 
         }
 
-        public async Task<Product> GetProductByIdAsync(long id, CancellationToken cancellationToken)
+        public async Task<Product?> GetProductByIdAsync(long id, CancellationToken cancellationToken = default)
         {
             return await _context.Products.Include(x => x.Category).Include(x => x.Images).SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
-        public async Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType = ProductSortType.Newest)
+        public async Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default)
         {
             IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category).Where(x => x.CategoryId == categoryId);
 
@@ -66,16 +66,16 @@ namespace ECommerceApp.Core.Interfaces.Repositories
                 MainImageUrl = p.Images.Where(i => i.IsMain).Select(i => i.Url).FirstOrDefault(),
                 CreatedDate = p.CreatedDate,
                 UpdatedDate = p.UpdatedDate
-            }).ToListAsync();     
+            }).ToListAsync(cancellationToken);     
         }
 
-        public async Task<IEnumerable<Product>> GetAllWithCategoriesWithoutImageAsync(int pageSize, int pageNumber, ProductSortType sortType)
+        public async Task<IEnumerable<Product>> GetAllWithCategoriesWithoutImageAsync(int pageSize, int pageNumber, ProductSortType sortType, CancellationToken cancellationToken = default)
         {
             IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category);
 
             return await query.SortBy(sortType)
                         .ToPagedList(pageNumber, pageSize)
-                        .ToListAsync();
+                        .ToListAsync(cancellationToken);
         }
 
     }

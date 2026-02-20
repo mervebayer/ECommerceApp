@@ -34,19 +34,19 @@ namespace ECommerceApp.Service.Services
             _uploadValidator = uploadValidator;
         }
 
-        public async Task<ProductImageDto> AddImageAsync(long productId, ImageUploadDto image, CancellationToken ct)
+        public async Task<ProductImageDto> AddImageAsync(long productId, ImageUploadDto image, CancellationToken cancellationToken)
         {
-            var validationResult = await _uploadValidator.ValidateAsync(image);
+            var validationResult = await _uploadValidator.ValidateAsync(image, cancellationToken);
             validationResult.ThrowIfInvalid();
 
-            var product = await _productRepository.GetByIdAsync(productId);
+            var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
             if (product is null) throw new NotFoundException("Product not found.");
   
 
-            var count = await _productImageRepository.CountByProductIdAsync(productId);
+            var count = await _productImageRepository.CountByProductIdAsync(productId, cancellationToken);
             if (count >= 5) throw new BadRequestException("Max 5 images per product.");
 
-            var saved = await _imageStorage.UploadProductImageAsync(productId, image, ct);
+            var saved = await _imageStorage.UploadProductImageAsync(productId, image, cancellationToken);
 
 
             var entity = new ProductImage
@@ -57,17 +57,17 @@ namespace ECommerceApp.Service.Services
                 IsMain = count == 0 
             };
 
-            await _productImageRepository.AddAsync(entity);
-            await _unitOfWork.CommitAsync();
+            await _productImageRepository.AddAsync(entity, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
             return _mapper.Map<ProductImageDto>(entity);
         }
 
-        public async Task DeleteImageAsync(long productId, long imageId, CancellationToken ct)
+        public async Task DeleteImageAsync(long productId, long imageId, CancellationToken cancellationToken)
         {
-            var product = await _productRepository.GetByIdAsync(productId);
+            var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
             if (product is null) throw new NotFoundException("Product not found.");
 
-            var image = await _productImageRepository.GetByIdAsync(imageId);
+            var image = await _productImageRepository.GetByIdAsync(imageId, cancellationToken);
             if (image is null) throw new NotFoundException("Image not found.");
 
             if (image.ProductId != productId)
@@ -77,30 +77,30 @@ namespace ECommerceApp.Service.Services
             var publicId = image.PublicId;
 
             _productImageRepository.Delete(image);
-            await _unitOfWork.CommitAsync();
+            await _unitOfWork.CommitAsync(cancellationToken);
 
 
-            await _imageStorage.DeleteAsync(publicId, ct);
+            await _imageStorage.DeleteAsync(publicId, cancellationToken);
 
             if (wasMain)
             {
-                var remaining = await _productImageRepository.GetByProductIdAsync(productId);
+                var remaining = await _productImageRepository.GetByProductIdAsync(productId, cancellationToken);
                 var newMain = remaining.FirstOrDefault();
                 if (newMain is not null && !newMain.IsMain)
                 {
                     newMain.IsMain = true;
                     _productImageRepository.Update(newMain);
-                    await _unitOfWork.CommitAsync();
+                    await _unitOfWork.CommitAsync(cancellationToken);
                 }
             }
         }
 
-        public async Task SetMainImageAsync(long productId, long imageId, CancellationToken ct)
+        public async Task SetMainImageAsync(long productId, long imageId, CancellationToken cancellationToken)
         {
-            var product = await _productRepository.GetByIdAsync(productId);
+            var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
             if (product is null) throw new NotFoundException("Product not found.");
 
-            var images = await _productImageRepository.GetByProductIdAsync(productId);
+            var images = await _productImageRepository.GetByProductIdAsync(productId, cancellationToken);
             if (images.Count == 0) throw new BadRequestException("Product has no images.");
 
             var target = images.FirstOrDefault(x => x.Id == imageId);
@@ -109,7 +109,7 @@ namespace ECommerceApp.Service.Services
             foreach (var img in images)
                 img.IsMain = img.Id == target.Id;
 
-            await _unitOfWork.CommitAsync();
+            await _unitOfWork.CommitAsync(cancellationToken);
         }
     }
 }

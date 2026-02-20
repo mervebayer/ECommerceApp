@@ -10,8 +10,8 @@ namespace ECommerceApp.Service.Interfaces
 {
     public interface IAuthenticationService
     {
-        Task<TokenDto> LoginAsync(LoginDto loginDto);
-        Task<TokenDto> CreateTokenByRefreshTokenAsync(string refreshToken);
-        Task<UserDto> RegisterAsync(UserRegisterDto registerDto);
+        Task<TokenDto> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken = default);
+        Task<TokenDto> CreateTokenByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
+        Task<UserDto> RegisterAsync(UserRegisterDto registerDto, CancellationToken cancellationToken = default);
     }
 }

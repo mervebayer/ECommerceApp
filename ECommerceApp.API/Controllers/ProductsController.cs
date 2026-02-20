@@ -4,6 +4,7 @@ using ECommerceApp.Core.Interfaces.Services;
 using ECommerceApp.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading;
 
 namespace ECommerceApp.API.Controllers
 {
@@ -22,56 +23,56 @@ namespace ECommerceApp.API.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin,StoreManager,Customer")]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default)
         {
-            var data = await _productService.GetAllAsync(pageNumber, pageSize, sortType);
+            var data = await _productService.GetAllAsync(pageNumber, pageSize, sortType, cancellationToken);
             return Ok(data);
         }
         
         [HttpGet("{id:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager,Customer")]
-        public async Task<IActionResult> GetById(long id)
+        public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken = default)
         {
-            var data = await _productService.GetByIdAsync(id);
+            var data = await _productService.GetByIdAsync(id, cancellationToken);
             return Ok(data);
         }
-   
 
-        [HttpGet("category/{categoryId:long}")]
+
+        [HttpGet("category/{categoryId:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager,Customer")]
-        public async Task<IActionResult> GetByCategoryId([FromRoute] long categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest) { 
-            var data = await _productService.GetProductsByCategoryIdAsync(categoryId, pageNumber, pageSize, sortType);
+        public async Task<IActionResult> GetByCategoryId([FromRoute] long categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default) { 
+            var data = await _productService.GetProductsByCategoryIdAsync(categoryId, pageNumber, pageSize, sortType, cancellationToken);
             return Ok(data);
         }
 
         [HttpPost]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> Create(ProductCreateDto product)
+        public async Task<IActionResult> Create([FromBody] ProductCreateDto product, CancellationToken cancellationToken = default)
         {
-            var data = await _productService.AddAsync(product);
+            var data = await _productService.AddAsync(product, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = data.Id }, data);
         }
 
         [HttpPut("{id:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> Update(long id, [FromBody] ProductUpdateDto product)
+        public async Task<IActionResult> Update(long id, [FromBody] ProductUpdateDto product, CancellationToken cancellationToken = default)
         {
-                await _productService.UpdateAsync(id, product);
+                await _productService.UpdateAsync(id, product, cancellationToken);
                 return NoContent();       
         }
 
         [HttpDelete("{id:long:min(1)}")]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> Delete(long id)
+        public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken = default)
         {
-            await _productService.DeleteAsync(id);
+            await _productService.DeleteAsync(id, cancellationToken);
             return NoContent();      
           
         }
 
         [HttpPost("{id:long}/images")]
         [Authorize(Roles = "Admin,StoreManager")]
-        public async Task<IActionResult> UploadImage(long id, IFormFile file, CancellationToken ct)
+        public async Task<IActionResult> UploadImage(long id, IFormFile file, CancellationToken cancellationToken = default)
         {
             if (file is null || file.Length == 0) return BadRequest("File is required.");
 
@@ -83,23 +84,23 @@ namespace ECommerceApp.API.Controllers
                 ContentType = file.ContentType,
                 Length = file.Length
             };
-            var result = await _productImageService.AddImageAsync(id, dto, ct);
+            var result = await _productImageService.AddImageAsync(id, dto, cancellationToken);
             return Ok(result);
         }
 
-        [Authorize(Roles = "Admin,StoreManager")]
         [HttpDelete("{productId:long}/images/{imageId:long}")]
-        public async Task<IActionResult> DeleteImage(long productId, long imageId, CancellationToken ct)
+        [Authorize(Roles = "Admin,StoreManager")]
+        public async Task<IActionResult> DeleteImage(long productId, long imageId, CancellationToken cancellationToken = default)
         {
-            await _productImageService.DeleteImageAsync(productId, imageId, ct);
+            await _productImageService.DeleteImageAsync(productId, imageId, cancellationToken);
             return NoContent();
         }
 
-        [Authorize(Roles = "Admin,StoreManager")]
         [HttpPut("{productId:long}/images/{imageId:long}/main")]
-        public async Task<IActionResult> SetMainImage(long productId, long imageId, CancellationToken ct)
+        [Authorize(Roles = "Admin,StoreManager")]
+        public async Task<IActionResult> SetMainImage(long productId, long imageId, CancellationToken cancellationToken = default)
         {
-            await _productImageService.SetMainImageAsync(productId, imageId, ct);
+            await _productImageService.SetMainImageAsync(productId, imageId, cancellationToken);
             return NoContent();
         }
 
