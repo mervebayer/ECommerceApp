@@ -1,7 +1,6 @@
 ﻿using ECommerceApp.Core.DTOs.Products;
 using ECommerceApp.Core.Enums;
 using ECommerceApp.Core.Interfaces.Services;
-using ECommerceApp.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading;

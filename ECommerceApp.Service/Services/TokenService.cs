@@ -1,7 +1,7 @@
 ﻿using ECommerceApp.Core.Configurations;
 using ECommerceApp.Core.DTOs;
 using ECommerceApp.Core.Entities;
-using ECommerceApp.Service.Interfaces;
+using ECommerceApp.Core.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

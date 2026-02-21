@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ECommerceApp.Service.Interfaces
+namespace ECommerceApp.Core.Interfaces.Services
 {
     public interface IAuthenticationService
     {
