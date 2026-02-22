@@ -16,5 +16,6 @@ namespace ECommerceApp.Core.Interfaces.Repositories
         Task<IEnumerable<Product>> GetAllWithCategoriesWithoutImageAsync(int pageSize, int pageNumber, ProductSortType sortType, CancellationToken cancellationToken = default);
         Task<Product> GetProductByIdAsync(long id, CancellationToken cancellationToken = default);
         Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType, CancellationToken cancellationToken = default);
+        Task<Product?> GetByIdWithImagesAsync(long id, CancellationToken cancellationToken = default);
     }
 }

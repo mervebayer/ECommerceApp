@@ -7,7 +7,6 @@ using ECommerceApp.Core.Interfaces.Services;
 using ECommerceApp.Core.Models;
 using ECommerceApp.Data;
 using ECommerceApp.Data.Repositories;
-using ECommerceApp.Service.Interfaces;
 using ECommerceApp.Service.Mappings;
 using ECommerceApp.Service.Services;
 using ECommerceApp.Service.Validations.Products;
@@ -19,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
+using StackExchange.Redis;
 using System.Text;
 
 Log.Logger = new LoggerConfiguration()
@@ -101,6 +101,13 @@ try
     builder.Services.AddScoped<IImageStorage, CloudinaryImageStorage>();
     builder.Services.AddScoped<IProductImageService, ProductImageService>();
 
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+    builder.Services.AddSingleton<IConnectionMultiplexer>(config =>
+    {
+        return ConnectionMultiplexer.Connect(redisConnectionString);
+    });
+    builder.Services.AddScoped<IBasketRepository, BasketRepository>();
+    builder.Services.AddScoped<IBasketService, BasketService>();
 
     var app = builder.Build();
     app.UseSerilogRequestLogging(options =>

@@ -50,6 +50,13 @@ namespace ECommerceApp.Core.Interfaces.Repositories
             return await _context.Products.Include(x => x.Category).Include(x => x.Images).SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
+        public async Task<Product?> GetByIdWithImagesAsync(long id, CancellationToken cancellationToken = default)
+        {
+            return await _context.Products
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        }
+
         public async Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageSize, int pageNumber, ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default)
         {
             IQueryable<Product> query = _context.Products.AsNoTracking().Include(x => x.Category).Where(x => x.CategoryId == categoryId);

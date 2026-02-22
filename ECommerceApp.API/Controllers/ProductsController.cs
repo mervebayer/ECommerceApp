@@ -21,7 +21,7 @@ namespace ECommerceApp.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin,StoreManager,Customer")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default)
         {
             var data = await _productService.GetAllAsync(pageNumber, pageSize, sortType, cancellationToken);
@@ -29,7 +29,7 @@ namespace ECommerceApp.API.Controllers
         }
         
         [HttpGet("{id:long:min(1)}")]
-        [Authorize(Roles = "Admin,StoreManager,Customer")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken = default)
         {
             var data = await _productService.GetByIdAsync(id, cancellationToken);
@@ -38,7 +38,7 @@ namespace ECommerceApp.API.Controllers
 
 
         [HttpGet("category/{categoryId:long:min(1)}")]
-        [Authorize(Roles = "Admin,StoreManager,Customer")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetByCategoryId([FromRoute] long categoryId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default) { 
             var data = await _productService.GetProductsByCategoryIdAsync(categoryId, pageNumber, pageSize, sortType, cancellationToken);
             return Ok(data);
