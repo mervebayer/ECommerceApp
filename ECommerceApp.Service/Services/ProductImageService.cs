@@ -7,6 +7,7 @@ using ECommerceApp.Core.Interfaces.Repositories;
 using ECommerceApp.Core.Interfaces.Services;
 using ECommerceApp.Service.Extensions;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,8 +24,8 @@ namespace ECommerceApp.Service.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IValidator<ImageUploadDto> _uploadValidator;
-
-        public ProductImageService(IProductRepository productRepository, IProductImageRepository productImageRepository, IImageStorage imageStorage, IUnitOfWork unitOfWork, IMapper mapper, IValidator<ImageUploadDto> uploadValidator)
+        private readonly ILogger<ProductService> _logger;
+        public ProductImageService(IProductRepository productRepository, IProductImageRepository productImageRepository, IImageStorage imageStorage, IUnitOfWork unitOfWork, IMapper mapper, IValidator<ImageUploadDto> uploadValidator, ILogger<ProductService> logger)
         {
             _productRepository = productRepository;
             _productImageRepository = productImageRepository;
@@ -32,6 +33,7 @@ namespace ECommerceApp.Service.Services
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _uploadValidator = uploadValidator;
+            _logger = logger;
         }
 
         public async Task<ProductImageDto> AddImageAsync(long productId, ImageUploadDto image, CancellationToken cancellationToken)
@@ -57,11 +59,26 @@ namespace ECommerceApp.Service.Services
                 IsMain = count == 0 
             };
 
-            await _productImageRepository.AddAsync(entity, cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
-            return _mapper.Map<ProductImageDto>(entity);
+            try
+            {
+                await _productImageRepository.AddAsync(entity, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
+                return _mapper.Map<ProductImageDto>(entity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to persist image metadata. ProductId={ProductId}, PublicId={PublicId}", productId, saved.PublicId);
+                try
+                {
+                    await _imageStorage.DeleteAsync(saved.PublicId, cancellationToken);
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogError(cleanupEx, "Failed to cleanup Cloudinary file after DB failure. ProductId={ProductId}, PublicId={PublicId}", productId, saved.PublicId);
+                }
+                throw;
+            }
         }
-
         public async Task DeleteImageAsync(long productId, long imageId, CancellationToken cancellationToken)
         {
             var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
@@ -78,19 +95,30 @@ namespace ECommerceApp.Service.Services
 
             _productImageRepository.Delete(image);
             await _unitOfWork.CommitAsync(cancellationToken);
+            _logger.LogInformation("Product image deleted from DB. ProductId={ProductId}, ImageId={ImageId}, WasMain={WasMain}", productId, imageId, wasMain);
 
+            try
+            {
+                await _imageStorage.DeleteAsync(publicId, cancellationToken);
 
-            await _imageStorage.DeleteAsync(publicId, cancellationToken);
+                _logger.LogInformation("Product image deleted from storage. ProductId={ProductId}, PublicId={PublicId}", productId, publicId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,"Failed to delete image from storage. ProductId={ProductId}, PublicId={PublicId}", productId, publicId);
+            }
+
 
             if (wasMain)
             {
                 var remaining = await _productImageRepository.GetByProductIdAsync(productId, cancellationToken);
-                var newMain = remaining.FirstOrDefault();
+                var newMain = remaining.OrderBy(x => x.Id).FirstOrDefault();
                 if (newMain is not null && !newMain.IsMain)
                 {
                     newMain.IsMain = true;
                     _productImageRepository.Update(newMain);
                     await _unitOfWork.CommitAsync(cancellationToken);
+                    _logger.LogInformation("Main image reassigned after deletion. ProductId={ProductId}, NewMainImageId={ImageId}", productId, newMain.Id);
                 }
             }
         }
@@ -110,6 +138,7 @@ namespace ECommerceApp.Service.Services
                 img.IsMain = img.Id == target.Id;
 
             await _unitOfWork.CommitAsync(cancellationToken);
+            _logger.LogInformation("Main image set. ProductId={ProductId}, ImageId={ImageId}", productId, imageId);
         }
     }
 }
