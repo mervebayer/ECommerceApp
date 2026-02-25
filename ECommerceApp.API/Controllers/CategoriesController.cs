@@ -1,6 +1,5 @@
-﻿using ECommerceApp.Core.DTOs.Categories;
-using ECommerceApp.Core.Interfaces.Services;
-using ECommerceApp.Service.Services;
+﻿using ECommerceApp.Application.DTOs.Categories;
+using ECommerceApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

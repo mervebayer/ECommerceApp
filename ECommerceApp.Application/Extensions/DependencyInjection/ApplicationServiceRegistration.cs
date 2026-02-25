@@ -1,0 +1,25 @@
+﻿using ECommerceApp.Application.Mappings;
+using ECommerceApp.Application.Services;
+using ECommerceApp.Application.Interfaces;
+using ECommerceApp.Application.Validations.Products;
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace ECommerceApp.Application.Extensions.DependencyInjection
+{
+    public static class ApplicationServiceRegistration
+    {
+        public static IServiceCollection AddApplication(this IServiceCollection services)
+        {
+            services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<ICategoryService, CategoryService>();
+            services.AddScoped<IAuthenticationService, AuthenticationService>();
+            services.AddScoped<ITokenService, TokenService>();
+
+            services.AddAutoMapper(typeof(MappingProfile).Assembly);
+            services.AddValidatorsFromAssembly(typeof(ProductCreateDtoValidator).Assembly);
+
+            return services;
+        }
+    }
+}

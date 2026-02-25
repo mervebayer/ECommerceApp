@@ -1,6 +1,6 @@
-﻿using ECommerceApp.Core.DTOs.Baskets;
-using ECommerceApp.Core.Interfaces.Services;
-using ECommerceApp.Core.Models;
+﻿using ECommerceApp.Application.DTOs.Baskets;
+using ECommerceApp.Application.Interfaces;
+using ECommerceApp.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerceApp.API.Controllers
@@ -30,18 +30,18 @@ namespace ECommerceApp.API.Controllers
             return Ok(basket);
         }
 
-        [HttpPost]
-        public async Task<ActionResult<CustomerBasket>> UpdateBasket(CustomerBasket basket)
-        {
-            var basketId = GetOrCreateBasketId();
-            basket.Id = basketId;
-            var updatedBasket = await _basketService.UpdateBasketAsync(basket);
+        //[HttpPost]
+        //public async Task<ActionResult<CustomerBasket>> UpdateBasket(CustomerBasket basket)
+        //{
+        //    var basketId = GetOrCreateBasketId();
+        //    basket.Id = basketId;
+        //    var updatedBasket = await _basketService.UpdateBasketAsync(basket);
 
-            if (updatedBasket == null)
-                return BadRequest("An error occurred while updating the basket.");
+        //    if (updatedBasket == null)
+        //        return BadRequest("An error occurred while updating the basket.");
 
-            return Ok(updatedBasket);
-        }
+        //    return Ok(updatedBasket);
+        //}
 
         [HttpPost("items/{productId:long}/decrease")]
         public async Task<IActionResult> DecreaseItem(long productId, [FromQuery] int quantity = 1)

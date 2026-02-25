@@ -1,24 +1,15 @@
 using ECommerceApp.API.Middlewares;
-using ECommerceApp.Core.Configurations;
-using ECommerceApp.Core.Entities;
-using ECommerceApp.Core.Interfaces;
-using ECommerceApp.Core.Interfaces.Repositories;
-using ECommerceApp.Core.Interfaces.Services;
-using ECommerceApp.Core.Models;
-using ECommerceApp.Data;
-using ECommerceApp.Data.Repositories;
-using ECommerceApp.Service.Mappings;
-using ECommerceApp.Service.Services;
-using ECommerceApp.Service.Validations.Products;
-using FluentValidation;
+using ECommerceApp.Application.Extensions.DependencyInjection;
+using ECommerceApp.Domain.Entities;
+using ECommerceApp.Infrastructure.Extensions.DependencyInjection;
+using ECommerceApp.Infrastructure.Options;
+using ECommerceApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
-using StackExchange.Redis;
 using System.Text;
 
 Log.Logger = new LoggerConfiguration()
@@ -35,17 +26,11 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-
     builder.Host.UseSerilog();
 
-    var jwtSettings = builder.Configuration.GetSection("JWTSettings").Get<JwtSettings>();
-    var secretKey = Encoding.UTF8.GetBytes(jwtSettings.SecurityKey);
-
-    // Add services to the container.
-
     builder.Services.AddControllers();
-    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
+
     builder.Services.AddSwaggerGen(c =>
     {
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -62,34 +47,26 @@ try
             {
                 new OpenApiSecurityScheme
                 {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer" 
-                    }
+                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
                 },
                 Array.Empty<string>()
             }
         });
     });
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")) );
-    builder.Services.AddIdentity<AppUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
-    builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-    builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-    builder.Services.AddScoped<IProductRepository, ProductRepository>();
-    builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
-    builder.Services.AddScoped<IProductService, ProductService>();
-    builder.Services.AddScoped<ICategoryService, CategoryService>();
-    builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
-    builder.Services.AddScoped<ITokenService, TokenService>();
-    builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
-    builder.Services.AddValidatorsFromAssembly(typeof(ProductCreateDtoValidator).Assembly);
-    builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWTSettings"));
+
+
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
+
+    var jwtSettings = builder.Configuration.GetSection("JWTSettings").Get<JwtSettings>();
+    var secretKey = Encoding.UTF8.GetBytes(jwtSettings.SecurityKey);
+
     builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    }).AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
+    })
+    .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
@@ -99,36 +76,23 @@ try
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(secretKey)
     });
-    builder.Services.Configure<CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
-    builder.Services.AddScoped<IImageStorage, CloudinaryImageStorage>();
-    builder.Services.AddScoped<IProductImageService, ProductImageService>();
-
-    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
-    builder.Services.AddSingleton<IConnectionMultiplexer>(config =>
-    {
-        return ConnectionMultiplexer.Connect(redisConnectionString);
-    });
-    builder.Services.AddScoped<IBasketRepository, BasketRepository>();
-    builder.Services.AddScoped<IBasketService, BasketService>();
 
     var app = builder.Build();
-    app.UseSerilogRequestLogging(options =>
+
+    app.UseSerilogRequestLogging(options => 
     {
-        options.GetLevel = (httpContext, elapsed, ex) =>
-        {
-            var statusCode = httpContext.Response.StatusCode;
-            if (ex != null || statusCode >= 500)
-                return LogEventLevel.Error;
-            else if (statusCode >= 400 && statusCode <= 499)
-                return LogEventLevel.Warning;
-            else if (elapsed > 2000)
-                return LogEventLevel.Warning;
-            return LogEventLevel.Information;
-        };
+        options.GetLevel = (httpContext, elapsed, ex) => { 
+            var statusCode = httpContext.Response.StatusCode; 
+            if (ex != null || statusCode >= 500) 
+                return LogEventLevel.Error; 
+            else if (statusCode >= 400 && statusCode <= 499) 
+                return LogEventLevel.Warning; 
+            else if (elapsed > 2000) 
+                return LogEventLevel.Warning; 
+            return LogEventLevel.Information; };
     });
     app.UseMiddleware<ExceptionMiddleware>();
 
-    // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
@@ -137,38 +101,35 @@ try
 
     app.UseHttpsRedirection();
     app.UseRouting();
-
     app.UseAuthentication();
     app.UseAuthorization();
-
     app.MapControllers();
 
     using (var scope = app.Services.CreateAsyncScope())
     {
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         string[] roleNames = { "Admin", "Customer", "StoreManager" };
-        foreach(var roleName in roleNames)
+        foreach (var roleName in roleNames)
         {
-            if(!await roleManager.RoleExistsAsync(roleName)){
+            if (!await roleManager.RoleExistsAsync(roleName))
                 await roleManager.CreateAsync(new IdentityRole(roleName));
-            }
         }
     }
 
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
-
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        var configuration = services.GetRequiredService<IConfiguration>(); 
+        var configuration = services.GetRequiredService<IConfiguration>();
         await IdentitySeedData.SeedAsync(userManager, roleManager, configuration);
     }
+
     app.Run();
 }
-catch (Exception ex) {
+catch (Exception ex)
+{
     Log.Fatal(ex, "Host terminated unexpectedly.");
-
 }
 finally
 {

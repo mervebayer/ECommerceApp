@@ -1,6 +1,6 @@
-﻿using ECommerceApp.Core.DTOs;
-using ECommerceApp.Core.DTOs.Users;
-using ECommerceApp.Core.Interfaces.Services;
+﻿using ECommerceApp.Application.DTOs;
+using ECommerceApp.Application.DTOs.Users;
+using ECommerceApp.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerceApp.API.Controllers

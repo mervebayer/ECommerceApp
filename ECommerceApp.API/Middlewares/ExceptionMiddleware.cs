@@ -1,5 +1,5 @@
-﻿using ECommerceApp.Core.Exceptions;
-using ECommerceApp.Core.Models;
+﻿using ECommerceApp.API.Models;
+using ECommerceApp.Domain.Exceptions;
 using System.Text.Json;
 
 namespace ECommerceApp.API.Middlewares
