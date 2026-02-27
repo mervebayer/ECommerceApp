@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Application.DTOs.Products;
+using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Enums;
 using System;
@@ -12,7 +13,7 @@ namespace ECommerceApp.Application.Interfaces
 {
     public interface IProductService
     {
-        Task<IEnumerable<ProductListDto>> GetAllAsync(int pageSize, int pageNumber, ProductSortType sortType, CancellationToken cancellationToken);
+        Task<PagedResult<ProductListItemDto>> GetAllAsync(ProductQueryParams p, CancellationToken cancellationToken);
         Task<ProductDto> GetByIdAsync(long id, CancellationToken cancellationToken);
         Task<ProductDto> GetByIdWithoutCategoryAsync(long id, CancellationToken cancellationToken);
         Task<ProductDto> AddAsync(ProductCreateDto entity, CancellationToken cancellationToken);

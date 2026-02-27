@@ -1,5 +1,6 @@
 ﻿using ECommerceApp.Application.DTOs.Images;
 using ECommerceApp.Application.DTOs.Products;
+using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -23,9 +24,10 @@ namespace ECommerceApp.API.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default)
+        [ProducesResponseType(typeof(PagedResult<ProductListItemDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<ProductListItemDto>>> GetAll([FromQuery] ProductQueryParams p, CancellationToken cancellationToken)
         {
-            var data = await _productService.GetAllAsync(pageNumber, pageSize, sortType, cancellationToken);
+            var data = await _productService.GetAllAsync(p, cancellationToken);
             return Ok(data);
         }
         

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using ECommerceApp.Application.DTOs.Products;
+using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Extensions;
 using ECommerceApp.Application.Interfaces;
 
@@ -8,7 +9,6 @@ using ECommerceApp.Domain.Enums;
 using ECommerceApp.Domain.Exceptions;
 using ECommerceApp.Domain.Interfaces;
 using ECommerceApp.Domain.Interfaces.Repositories;
-
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 
@@ -17,13 +17,15 @@ namespace ECommerceApp.Application.Services
     public class ProductService : IProductService
     {
         private readonly IProductRepository _productRepository;
+        private readonly IProductReadRepository _productReadRepository;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IValidator<ProductCreateDto> _createValidator;
         private readonly IValidator<ProductUpdateDto> _updateValidator;
+        private readonly IValidator<ProductQueryParams> _paramValidator;
         private readonly ILogger<ProductService> _logger;
 
-        public ProductService(IProductRepository productRepository, IMapper mapper, IUnitOfWork unitOfWork, IValidator<ProductCreateDto> createValidator, IValidator<ProductUpdateDto> updateValidator, ILogger<ProductService> logger)
+        public ProductService(IProductRepository productRepository, IMapper mapper, IUnitOfWork unitOfWork, IValidator<ProductCreateDto> createValidator, IValidator<ProductUpdateDto> updateValidator, ILogger<ProductService> logger, IValidator<ProductQueryParams> paramValidator, IProductReadRepository productReadRepository)
         {
             _productRepository = productRepository;
             _mapper = mapper;
@@ -31,24 +33,18 @@ namespace ECommerceApp.Application.Services
             _createValidator = createValidator;
             _updateValidator = updateValidator;
             _logger = logger;
+            _paramValidator = paramValidator;
+            _productReadRepository = productReadRepository;
         }
 
-        public async Task<IEnumerable<ProductListDto>> GetAllAsync(int pageNumber = 1, int pageSize = 20, ProductSortType sortType = ProductSortType.Newest, CancellationToken cancellationToken = default)
+        public async Task<PagedResult<ProductListItemDto>> GetAllAsync(ProductQueryParams p, CancellationToken cancellationToken)
         {
-            var products = await _productRepository.GetProductList(pageSize, pageNumber, sortType, cancellationToken);
+            var validationResult = await _paramValidator.ValidateAsync(p, cancellationToken);
+            validationResult.ThrowIfInvalid();
 
-            return products.Select(p => new DTOs.Products.ProductListDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Stock = p.Stock,
-                CategoryId = p.CategoryId,
-                CategoryName = p.Category?.Name,
-                MainImageUrl = p.Images.FirstOrDefault(i => i.IsMain)?.Url,
-                CreatedDate = p.CreatedDate,
-                UpdatedDate = p.UpdatedDate
-            }).ToList();
-        }
+            return await _productReadRepository.GetProductsAsync(p, cancellationToken);
+        }    
+
         public async Task<ProductDto> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
             var data = await _productRepository.GetProductByIdAsync(id, cancellationToken) ??
@@ -135,8 +131,7 @@ namespace ECommerceApp.Application.Services
         }
 
 
-        #endregion
-
+        #endregion   
 
     }
 }

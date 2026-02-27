@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ECommerceApp.Infrastructure.Extensions
+namespace ECommerceApp.Application.Extensions
 {
     public static class ProductExtensions
     {

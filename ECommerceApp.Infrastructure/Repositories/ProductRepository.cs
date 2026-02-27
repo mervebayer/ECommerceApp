@@ -1,7 +1,7 @@
 ﻿using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Enums;
 using ECommerceApp.Domain.Interfaces.Repositories;
-using ECommerceApp.Infrastructure.Extensions;
+using ECommerceApp.Application.Extensions;
 using ECommerceApp.Infrastructure.Persistence;
 using ECommerceApp.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
