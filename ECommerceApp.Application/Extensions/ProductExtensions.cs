@@ -15,19 +15,19 @@ namespace ECommerceApp.Application.Extensions
             switch (sortType)
             {
                 case ProductSortType.Newest:
-                    query = query.OrderByDescending(x => x.CreatedDate);
+                    query = query.OrderByDescending(x => x.CreatedDate).ThenBy(x => x.Id); //ThenBy(ID) : stable ordering for pagination
                     break;
                 case ProductSortType.PriceDesc:
-                    query = query.OrderByDescending(x => x.Price);
+                    query = query.OrderByDescending(x => x.Price).ThenBy(x => x.Id);
                     break;
                 case ProductSortType.PriceAsc:
-                    query = query.OrderBy(x => x.Price);
+                    query = query.OrderBy(x => x.Price).ThenBy(x => x.Id);
                     break;
                 case ProductSortType.NameAsc:
-                    query = query.OrderBy(x => x.Name);
+                    query = query.OrderBy(x => x.Name).ThenBy(x => x.Id);
                     break;
                 default:
-                    query = query.OrderByDescending(x => x.CreatedDate);
+                    query = query.OrderByDescending(x => x.CreatedDate).ThenBy(x => x.Id);
                     break;
 
             }
