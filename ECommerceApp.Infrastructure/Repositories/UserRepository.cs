@@ -82,8 +82,6 @@ namespace ECommerceApp.Infrastructure.Repositories
         {
             return _context.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken, cancellationToken);
         }
-
-        //  TODO(perf): Pagination can be added later for large user lists. (SQL IN)
         public async Task<Dictionary<string, IList<string>>> GetRolesByUserIdsAsync(IEnumerable<string> userIds, CancellationToken cancellationToken)
         {
             var ids = userIds
@@ -112,9 +110,24 @@ namespace ECommerceApp.Infrastructure.Repositories
                     g => (IList<string>)g
                         .Select(x => x.RoleName)
                         .Where(x => !string.IsNullOrWhiteSpace(x))
-                        .Cast<string>()
                         .ToList()
                 );
+        }
+
+        public async Task<IReadOnlyList<AppUser>> GetPagedListAsync(int pageSize, int pageNumber, CancellationToken cancellationToken)
+        {
+            IQueryable<AppUser> query = _context.Users
+                .AsNoTracking()
+                .OrderBy(x => x.UserName);
+
+            query = query.ToPagedList(pageNumber, pageSize);
+
+            return await query.ToListAsync(cancellationToken);
+        }
+
+        public async Task<int> CountAsync(CancellationToken cancellationToken)
+        {
+            return await _context.Users.CountAsync(cancellationToken);
         }
     }
 }

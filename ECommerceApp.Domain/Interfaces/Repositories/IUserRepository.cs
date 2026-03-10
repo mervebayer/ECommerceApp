@@ -21,7 +21,8 @@ namespace ECommerceApp.Application.Interfaces
         Task RemoveFromRoleAsync(AppUser user, string roleName, CancellationToken cancellationToken);
 
         Task<IReadOnlyList<AppUser>> GetAllAsync(CancellationToken cancellationToken);
-
+        Task<IReadOnlyList<AppUser>> GetPagedListAsync(int pageSize, int pageNumber, CancellationToken cancellationToken);
         Task<Dictionary<string, IList<string>>> GetRolesByUserIdsAsync(IEnumerable<string> userIds, CancellationToken cancellationToken);
+        Task<int> CountAsync(CancellationToken cancellationToken);
     }
 }

@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Application.DTOs.Users;
+﻿using ECommerceApp.Application.DTOs.QueryParams;
+using ECommerceApp.Application.DTOs.Users;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -18,11 +19,10 @@ namespace ECommerceApp.API.Controllers
             _userService = userService;
         }
 
-
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> GetUsers(CancellationToken cancellationToken)
+        public async Task<ActionResult<PagedResult<UserListItemDto>>> GetUsers([FromQuery] UserQueryParams queryParams, CancellationToken cancellationToken)
         {
-            var users = await _userService.GetUsersAsync(cancellationToken);
+            var users = await _userService.GetUsersAsync(queryParams, cancellationToken);
             return Ok(users);
         }
 
@@ -41,14 +41,14 @@ namespace ECommerceApp.API.Controllers
         }
 
         [HttpPost("{userId}/roles")]
-        public async Task<IActionResult> AssignRole(string userId, [FromBody] AssignRoleDto dto, CancellationToken cancellationToken)
+        public async Task<IActionResult> AddRoleToUser(string userId, [FromBody] AssignRoleDto dto, CancellationToken cancellationToken)
         {
             await _userService.AssignRoleAsync(userId, dto.RoleName, cancellationToken);
             return NoContent();
         }
 
         [HttpDelete("{userId}/roles/{roleName}")]
-        public async Task<IActionResult> RemoveRole(string userId, string roleName, CancellationToken cancellationToken)
+        public async Task<IActionResult> RemoveRoleFromUser(string userId, string roleName, CancellationToken cancellationToken)
         {
             await _userService.RemoveRoleAsync(userId, roleName, cancellationToken);
             return NoContent();

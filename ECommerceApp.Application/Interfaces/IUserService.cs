@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Application.DTOs.Users;
+﻿using ECommerceApp.Application.DTOs.QueryParams;
+using ECommerceApp.Application.DTOs.Users;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace ECommerceApp.Application.Interfaces
 {
     public interface IUserService
     {
-        Task<IReadOnlyList<UserListItemDto>> GetUsersAsync(CancellationToken cancellationToken);
+        Task<PagedResult<UserListItemDto>> GetUsersAsync(UserQueryParams queryParams, CancellationToken cancellationToken);
         Task<UserDetailDto> GetUserByIdAsync(string userId, CancellationToken cancellationToken);
 
         Task AssignRoleAsync(string userId, string roleName, CancellationToken cancellationToken);

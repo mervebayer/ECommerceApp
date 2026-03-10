@@ -1,7 +1,10 @@
 ﻿using ECommerceApp.Application.DTOs.Users;
+using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Exceptions;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
+using ECommerceApp.Application.Extensions;
 
 namespace ECommerceApp.Application.Services
 {
@@ -9,26 +12,38 @@ namespace ECommerceApp.Application.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ILogger<UserService> _logger;
+        private readonly IValidator<UserQueryParams> _queryParamsValidator;
 
-        public UserService(IUserRepository userRepository, ILogger<UserService> logger)
+        public UserService(IUserRepository userRepository, ILogger<UserService> logger, IValidator<UserQueryParams> queryParamsValidator)
         {
             _userRepository = userRepository;
             _logger = logger;
+            _queryParamsValidator = queryParamsValidator;
         }
 
-        // Note: Roles are loaded in batch to avoid N+1 queries.
-        //  TODO(perf): Pagination can be added later for large user lists.
-        public async Task<IReadOnlyList<UserListItemDto>> GetUsersAsync(CancellationToken cancellationToken)
+        // Roles are loaded in batch to avoid N+1 queries when listing paginated users.
+        public async Task<PagedResult<UserListItemDto>> GetUsersAsync(UserQueryParams queryParams, CancellationToken cancellationToken)
         {
-            var users = await _userRepository.GetAllAsync(cancellationToken);
+            var validationResult = await _queryParamsValidator.ValidateAsync(queryParams, cancellationToken);
+            validationResult.ThrowIfInvalid();
 
-            if (users.Count == 0)
-                return Array.Empty<UserListItemDto>();
+            var totalCount = await _userRepository.CountAsync(cancellationToken);
+
+            if (totalCount == 0)
+            {
+                return new PagedResult<UserListItemDto>
+                {
+                    Items = Array.Empty<UserListItemDto>(),
+                    TotalCount = 0
+                };
+            }
+
+            var users = await _userRepository.GetPagedListAsync(queryParams.PageSize, queryParams.PageNumber, cancellationToken);
 
             var userIds = users.Select(x => x.Id).ToList();
             var rolesByUserId = await _userRepository.GetRolesByUserIdsAsync(userIds, cancellationToken);
 
-            var result = users.Select(u =>
+            var items = users.Select(u =>
             {
                 rolesByUserId.TryGetValue(u.Id, out var roles);
                 roles ??= new List<string>();
@@ -43,7 +58,11 @@ namespace ECommerceApp.Application.Services
                 );
             }).ToList();
 
-            return result;
+            return new PagedResult<UserListItemDto>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
 
         public async Task<UserDetailDto> GetUserByIdAsync(string userId, CancellationToken cancellationToken)
