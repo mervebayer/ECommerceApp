@@ -16,26 +16,32 @@ namespace ECommerceApp.Application.Services
             _logger = logger;
         }
 
-        // TODO(perf): N+1 issue: roles are loaded per user.
-        // add pagination or cache lookup or 2-query approach
+        // Note: Roles are loaded in batch to avoid N+1 queries.
+        //  TODO(perf): Pagination can be added later for large user lists.
         public async Task<IReadOnlyList<UserListItemDto>> GetUsersAsync(CancellationToken cancellationToken)
         {
             var users = await _userRepository.GetAllAsync(cancellationToken);
 
-            var result = new List<UserListItemDto>(users.Count);
+            if (users.Count == 0)
+                return Array.Empty<UserListItemDto>();
 
-            foreach (var u in users)
+            var userIds = users.Select(x => x.Id).ToList();
+            var rolesByUserId = await _userRepository.GetRolesByUserIdsAsync(userIds, cancellationToken);
+
+            var result = users.Select(u =>
             {
-                var roles = await _userRepository.GetRolesAsync(u, cancellationToken);
-                result.Add(new UserListItemDto(
+                rolesByUserId.TryGetValue(u.Id, out var roles);
+                roles ??= new List<string>();
+
+                return new UserListItemDto(
                     u.Id,
-                    u.UserName ?? "",
-                    u.Email ?? "",
-                    u.FirstName ?? "",
-                    u.LastName ?? "",
+                    u.UserName ?? string.Empty,
+                    u.Email ?? string.Empty,
+                    u.FirstName ?? string.Empty,
+                    u.LastName ?? string.Empty,
                     roles
-                ));
-            }
+                );
+            }).ToList();
 
             return result;
         }

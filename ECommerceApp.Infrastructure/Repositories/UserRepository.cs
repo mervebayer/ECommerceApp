@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Application.Interfaces;
+﻿using ECommerceApp.Application.Extensions;
+using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Exceptions;
 using ECommerceApp.Infrastructure.Persistence;
@@ -80,6 +81,40 @@ namespace ECommerceApp.Infrastructure.Repositories
         public Task<AppUser?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
         {
             return _context.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken, cancellationToken);
+        }
+
+        //  TODO(perf): Pagination can be added later for large user lists. (SQL IN)
+        public async Task<Dictionary<string, IList<string>>> GetRolesByUserIdsAsync(IEnumerable<string> userIds, CancellationToken cancellationToken)
+        {
+            var ids = userIds
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0)
+                return new Dictionary<string, IList<string>>();
+        
+            var roleMappings = await (
+                from userRole in _context.UserRoles
+                join role in _context.Roles on userRole.RoleId equals role.Id
+                where ids.Contains(userRole.UserId)
+                select new
+                {
+                    userRole.UserId,
+                    RoleName = role.Name
+                })
+                .ToListAsync(cancellationToken);
+
+            return roleMappings
+                .GroupBy(x => x.UserId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IList<string>)g
+                        .Select(x => x.RoleName)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Cast<string>()
+                        .ToList()
+                );
         }
     }
 }

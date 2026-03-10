@@ -8,7 +8,7 @@ namespace ECommerceApp.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")]
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -22,7 +22,6 @@ namespace ECommerceApp.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> GetUsers(CancellationToken cancellationToken)
         {
-            var x = _userService;
             var users = await _userService.GetUsersAsync(cancellationToken);
             return Ok(users);
         }
