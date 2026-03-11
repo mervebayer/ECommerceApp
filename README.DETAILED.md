@@ -105,6 +105,14 @@ Dependencies flow inward. The Core layer remains framework-agnostic and independ
 - Main image management logic
 - Ownership validation checks
 
+### 👤 User & Role Management
+
+- Paginated user listing
+- User detail retrieval
+- User role listing
+- Admin role assignment/removal endpoints
+- Batch role loading to avoid N+1 queries in paginated user lists
+  
 ### 🧺 Redis-Based Basket System
 
 - Distributed basket storage with Redis
@@ -174,7 +182,6 @@ with enforced dependency direction rules.
 - User settings module
 - Address management (multiple addresses support)
 - Profile update flows
-- Admin role management endpoints (promote/demote users)
 - Role-based access policy refinements
   
 ### 🧾 Order & Payment Module
@@ -259,6 +266,13 @@ with enforced dependency direction rules.
 - PUT /api/products/{productId}/images/{imageId}/main
 - DELETE /api/products/{productId}/images/{imageId}
 
+### 👤 Users
+- GET /api/users
+- GET /api/users/{userId}
+- GET /api/users/{userId}/roles
+- POST /api/users/{userId}/roles
+- DELETE /api/users/{userId}/roles/{roleName}
+  
 ### 🧺 Basket (Redis)
 - GET /api/basket
 - POST /api/basket/items
