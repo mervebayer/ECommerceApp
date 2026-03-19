@@ -127,9 +127,15 @@ try
 
     app.Run();
 }
+catch (Exception ex) when (
+    ex.GetType().Name is "HostAbortedException" or "StopTheHostException")
+{
+    throw;
+}
 catch (Exception ex)
 {
     Log.Fatal(ex, "Host terminated unexpectedly.");
+    throw;
 }
 finally
 {
