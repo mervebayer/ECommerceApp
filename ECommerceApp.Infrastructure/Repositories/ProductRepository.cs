@@ -72,5 +72,12 @@ namespace ECommerceApp.Infrastructure.Interfaces.Repositories
                         .ToListAsync(cancellationToken);
         }
 
+        public async Task<IReadOnlyList<Product>> GetByIdsAsync(IReadOnlyCollection<long> productIds, CancellationToken cancellationToken)
+        {
+            if (productIds == null || productIds.Count == 0)
+                return Array.Empty<Product>();
+
+            return await _context.Products.Where(p => productIds.Contains(p.Id)).ToListAsync(cancellationToken);
+        }
     }
 }
