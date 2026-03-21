@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using ECommerceApp.Application.DTOs.Categories;
+using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.Products;
 using ECommerceApp.Application.DTOs.Users;
 using ECommerceApp.Domain.Entities;
@@ -27,6 +28,18 @@ namespace ECommerceApp.Application.Mappings
             CreateMap<UserRegisterDto, AppUser>();
             CreateMap<AppUser, UserDto>();
             CreateMap<ProductImage, ProductImageDto>();
+
+            // NOTE: AutoMapper uses constructor mapping for positional records. 
+            // Since OrderListDto is a positional record, use ForCtorParam instead of ForMember.
+
+            CreateMap<Order, OrderListDto>()
+                .ForCtorParam(nameof(OrderListDto.OrderId), opt => opt.MapFrom(src => src.Id))
+                .ForCtorParam(nameof(OrderListDto.TotalAmount), opt => opt.MapFrom(src => src.TotalAmount))
+                .ForCtorParam(nameof(OrderListDto.Status), opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForCtorParam(nameof(OrderListDto.ItemCount), opt => opt.MapFrom(src => src.Items.Count))
+                .ForCtorParam(nameof(OrderListDto.CreatedDate), opt => opt.MapFrom(src => src.CreatedDate));
+
+
         }
     }
 }

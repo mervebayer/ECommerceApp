@@ -1,8 +1,9 @@
-﻿using ECommerceApp.Application.DTOs.Orders;
+﻿using AutoMapper;
+using ECommerceApp.Application.DTOs.Orders;
+using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Enums;
-using ECommerceApp.Domain.Exceptions;
 using ECommerceApp.Domain.Interfaces;
 using ECommerceApp.Domain.Interfaces.Repositories;
 using Microsoft.Extensions.Logging;
@@ -16,19 +17,45 @@ namespace ECommerceApp.Application.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly IGenericRepository<Order> _orderRepository;
+        private readonly IOrderRepository _orderRepository;
         private readonly IBasketRepository _basketRepository;
         private readonly IProductRepository _productRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IGenericRepository<Order> orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
             _productRepository = productRepository;
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _mapper = mapper;
+        }
+
+        public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
+        {
+            var totalCount = await _orderRepository.CountAsync(userId, cancellationToken);
+
+            if (totalCount == 0)
+            {
+                return new PagedResult<OrderListDto>
+                {
+                    Items = Array.Empty<OrderListDto>(),
+                    TotalCount = 0
+                };
+            }
+
+            var orders = await _orderRepository.GetMyOrdersAsync(userId, queryParams.PageNumber, queryParams.PageSize, cancellationToken);
+
+            var items = _mapper.Map<List<OrderListDto>>(orders);
+
+            return new PagedResult<OrderListDto>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)

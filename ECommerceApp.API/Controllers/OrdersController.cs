@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Application.DTOs.Orders;
+using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +32,21 @@ namespace ECommerceApp.API.Controllers
                 return BadRequest("Basket not found.");
 
             var result = await _orderService.CreateOrderAsync(userId, basketId, request, cancellationToken);
+
+            return Ok(result);
+        }
+
+
+        [Authorize]
+        [HttpGet]
+        public async Task<ActionResult<IReadOnlyList<OrderListDto>>> GetMyOrders([FromQuery] OrderQueryParams queryParams, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var result = await _orderService.GetMyOrdersAsync(userId, queryParams, cancellationToken);
 
             return Ok(result);
         }
