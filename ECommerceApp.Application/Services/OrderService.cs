@@ -4,6 +4,7 @@ using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Enums;
+using ECommerceApp.Domain.Exceptions;
 using ECommerceApp.Domain.Interfaces;
 using ECommerceApp.Domain.Interfaces.Repositories;
 using Microsoft.Extensions.Logging;
@@ -56,6 +57,15 @@ namespace ECommerceApp.Application.Services
                 Items = items,
                 TotalCount = totalCount
             };
+        }
+
+        public async Task<OrderDetailDto> GetOrderByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken)
+        {
+            var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken)
+                    ?? throw new NotFoundException("Order not found.");
+
+            return _mapper.Map<OrderDetailDto>(order);
+
         }
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)

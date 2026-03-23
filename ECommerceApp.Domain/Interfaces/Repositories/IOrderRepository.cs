@@ -11,5 +11,6 @@ namespace ECommerceApp.Domain.Interfaces.Repositories
     {
         Task<IReadOnlyList<Order>> GetMyOrdersAsync(string userId, int pageNumber, int pageSize, CancellationToken cancellationToken);
         Task<int> CountAsync(string userId, CancellationToken cancellationToken);
+        Task<Order?> GetByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken);
     }
 }

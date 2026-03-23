@@ -50,5 +50,19 @@ namespace ECommerceApp.API.Controllers
 
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpGet("{orderId:long}")]
+        public async Task<ActionResult<OrderDetailDto>> GetOrderDetail(long orderId, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var result = await _orderService.GetOrderByIdAndUserIdAsync(userId, orderId, cancellationToken);
+
+            return Ok(result);
+        }
     }
 }

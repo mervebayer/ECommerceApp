@@ -21,7 +21,7 @@ namespace ECommerceApp.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<Order>> GetMyOrdersAsync(string userId,int pageNumber, int pageSize, CancellationToken cancellationToken)
         {
-            return await _context.Orders .AsNoTracking().Where(x => x.UserId == userId)
+            return await _context.Orders.AsNoTracking().Where(x => x.UserId == userId)
                 .Include(x => x.Items)
                 .OrderByDescending(x => x.CreatedDate)
                 .Skip((pageNumber - 1) * pageSize)
@@ -34,6 +34,10 @@ namespace ECommerceApp.Infrastructure.Repositories
             return await _context.Orders.AsNoTracking()
                 .CountAsync(x => x.UserId == userId, cancellationToken);
         }
-      
+
+        public async Task<Order?> GetByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken)
+        {
+            return await _context.Orders.AsNoTracking().Include(x => x.Items).SingleOrDefaultAsync(x => x.Id == orderId && x.UserId == userId, cancellationToken);
+        }
     }
 }
