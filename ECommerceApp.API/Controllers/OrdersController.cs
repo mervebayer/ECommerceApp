@@ -20,7 +20,7 @@ namespace ECommerceApp.API.Controllers
 
         [Authorize]
         [HttpPost]
-        public async Task<ActionResult<CreateOrderResponseDto>> CreateOrder([FromBody] CreateOrderRequestDto request, CancellationToken cancellationToken)
+        public async Task<ActionResult<CreateOrderResponseDto>> CreateOrderAsync([FromBody] CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var basketId = Request.Cookies["basketId"];
@@ -39,7 +39,7 @@ namespace ECommerceApp.API.Controllers
 
         [Authorize]
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<OrderListDto>>> GetMyOrders([FromQuery] OrderQueryParams queryParams, CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<OrderListDto>>> GetMyOrdersAsync([FromQuery] OrderQueryParams queryParams, CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -53,7 +53,7 @@ namespace ECommerceApp.API.Controllers
 
         [Authorize]
         [HttpGet("{orderId:long}")]
-        public async Task<ActionResult<OrderDetailDto>> GetOrderDetail(long orderId, CancellationToken cancellationToken)
+        public async Task<ActionResult<OrderDetailDto>> GetOrderDetailAsync(long orderId, CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -63,6 +63,38 @@ namespace ECommerceApp.API.Controllers
             var result = await _orderService.GetOrderByIdAndUserIdAsync(userId, orderId, cancellationToken);
 
             return Ok(result);
+        }
+
+        [Authorize]
+        [HttpPost("{orderId:long}/cancel")]
+        public async Task<IActionResult> CancelOrderAsync(long orderId, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            await _orderService.CancelOrderAsync(userId, orderId, cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpPatch("{orderId:long}/status")]
+        public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody] UpdateOrderStatusRequestDto request, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            await _orderService.UpdateOrderStatusAsync(
+                userId,
+                orderId,
+                request.Status,
+                cancellationToken);
+
+            return NoContent();
         }
     }
 }

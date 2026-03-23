@@ -68,7 +68,43 @@ namespace ECommerceApp.Application.Services
 
         }
 
+        // TODO: stock control 
+        public async Task CancelOrderAsync(string userId, long orderId, CancellationToken cancellationToken) {
+            
+            var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken)
+                 ?? throw new NotFoundException("Order not found.");
+            if (order.Status != OrderStatus.Pending)
+                throw new BusinessRuleException("Only pending orders can be cancelled.");
+
+            order.Status = OrderStatus.Cancelled;
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation("Order cancelled. OrderId={OrderId}, UserId={UserId}", orderId, userId);
+        }
+
+        public async Task UpdateOrderStatusAsync(string userId, long orderId, OrderStatus newStatus, CancellationToken cancellationToken)
+        {
+            var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken);
+
+            if (order is null)
+                throw new NotFoundException("Order not found.");
+
+            if (!IsValidStatusTransition(order.Status, newStatus)) {
+
+                _logger.LogWarning("Invalid order status transition. OrderId={OrderId}, Current={Current}, Next={Next}", orderId, order.Status, newStatus);
+                throw new InvalidOperationException("Invalid status transition.");
+            }
+                
+
+            order.Status = newStatus;
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+    
+        }
+
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)
+        // TODO: stock control 
         public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("CreateOrder started. UserId={UserId}, BasketId={BasketId}", userId, basketId);
@@ -82,7 +118,7 @@ namespace ECommerceApp.Application.Services
             if (string.IsNullOrWhiteSpace(basketId))
             {
                 _logger.LogWarning("CreateOrder failed: basketId is missing. UserId={UserId}", userId);
-                throw new InvalidOperationException("Basket was not found.");
+                throw new BusinessRuleException("Basket was not found.");
             }
 
             var basket = await _basketRepository.GetBasketAsync(basketId);
@@ -90,7 +126,7 @@ namespace ECommerceApp.Application.Services
             if (basket is null || basket.Items.Count == 0)
             {
                 _logger.LogWarning("CreateOrder failed: basket is empty. UserId={UserId}, BasketId={BasketId}", userId, basketId);
-                throw new InvalidOperationException("Basket is empty.");
+                throw new BusinessRuleException("Basket is empty.");
             }
 
             var productIds = basket.Items.Select(x => x.ProductId).Distinct().ToList();
@@ -102,10 +138,10 @@ namespace ECommerceApp.Application.Services
             foreach (var item in basket.Items)
             {
                 if (!productDictionary.TryGetValue(item.ProductId, out var product))
-                    throw new InvalidOperationException($"Product with id {item.ProductId} was not found.");
+                    throw new BusinessRuleException($"Product with id {item.ProductId} was not found.");
 
                 if (product.Stock < item.Quantity)
-                    throw new InvalidOperationException($"Insufficient stock for product '{product.Name}'.");
+                    throw new BusinessRuleException($"Insufficient stock for product '{product.Name}'.");
             }
 
             var order = new Order
@@ -158,7 +194,7 @@ namespace ECommerceApp.Application.Services
                 //basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
                 _logger.LogError("Basket deletion failed after order creation. BasketId={BasketId}, OrderId={OrderId}", basketId,order.Id);
 
-                //throw new InvalidOperationException("Basket could not be cleared after checkout.");
+                //throw new BusinessRuleException("Basket could not be cleared after checkout.");
             }
 
             _logger.LogInformation("Basket cleared after checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id );
@@ -169,6 +205,34 @@ namespace ECommerceApp.Application.Services
                 order.Status.ToString(),
                 order.Items.Count
             );
+        }
+
+        private static bool IsValidStatusTransition(OrderStatus current, OrderStatus next)
+        {
+            switch (current)
+            {
+                case OrderStatus.Pending:
+                    return next == OrderStatus.Confirmed || next == OrderStatus.Cancelled;
+
+                case OrderStatus.Confirmed:
+                    return next == OrderStatus.Preparing;
+
+                case OrderStatus.Preparing:
+                    return next == OrderStatus.Shipped;
+
+                case OrderStatus.Shipped:
+                    return next == OrderStatus.Delivered;
+
+                case OrderStatus.Delivered:
+                    return next == OrderStatus.Completed;
+
+                case OrderStatus.Cancelled:
+                case OrderStatus.Completed:
+                    return false;
+
+                default:
+                    return false;
+            }
         }
     }
 }

@@ -12,7 +12,8 @@ namespace ECommerceApp.Domain.Enums
         Confirmed = 2,
         Cancelled = 3,
         Completed = 4,
-        Preparation = 5,
-        Shipped = 6
+        Preparing = 5,
+        Shipped = 6,
+        Delivered = 7
     }
 }

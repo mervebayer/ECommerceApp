@@ -27,6 +27,7 @@ namespace ECommerceApp.API.Middlewares
                     ValidationException e => (StatusCodes.Status400BadRequest, (object)e.Errors),
                     UnauthorizedException => (StatusCodes.Status401Unauthorized, null),
                     ForbiddenException => (StatusCodes.Status403Forbidden, null),
+                    BusinessRuleException => (StatusCodes.Status400BadRequest, null),
                     _ => (StatusCodes.Status500InternalServerError, null)
                 };
 

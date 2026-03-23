@@ -37,7 +37,8 @@ namespace ECommerceApp.Infrastructure.Repositories
 
         public async Task<Order?> GetByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken)
         {
-            return await _context.Orders.AsNoTracking().Include(x => x.Items).SingleOrDefaultAsync(x => x.Id == orderId && x.UserId == userId, cancellationToken);
+            return await _context.Orders.Include(x => x.Items).SingleOrDefaultAsync(x => x.Id == orderId && x.UserId == userId, cancellationToken);
         }
+
     }
 }
