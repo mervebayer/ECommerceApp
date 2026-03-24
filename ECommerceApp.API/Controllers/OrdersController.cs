@@ -79,7 +79,7 @@ namespace ECommerceApp.API.Controllers
             return NoContent();
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin,StoreManager")]
         [HttpPatch("{orderId:long}/status")]
         public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody] UpdateOrderStatusRequestDto request, CancellationToken cancellationToken)
         {

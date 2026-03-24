@@ -76,6 +76,18 @@ namespace ECommerceApp.Application.Services
             if (order.Status != OrderStatus.Pending)
                 throw new BusinessRuleException("Only pending orders can be cancelled.");
 
+            var productIds = order.Items.Select(x => x.ProductId).Distinct().ToList();
+
+            var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
+
+            var productDictionary = products.ToDictionary(x => x.Id);
+
+            foreach (var item in order.Items)
+            {
+                if (!productDictionary.TryGetValue(item.ProductId, out var product))
+                    throw new NotFoundException($"Product with id {item.ProductId} was not found.");
+                product.Stock += item.Quantity;
+            }
             order.Status = OrderStatus.Cancelled;
 
             await _unitOfWork.CommitAsync(cancellationToken);
@@ -104,7 +116,7 @@ namespace ECommerceApp.Application.Services
         }
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)
-        // TODO: stock control 
+     
         public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("CreateOrder started. UserId={UserId}, BasketId={BasketId}", userId, basketId);
@@ -169,6 +181,9 @@ namespace ECommerceApp.Application.Services
                 };
 
                 order.Items.Add(orderItem);
+
+                // TODO: change stock control after payment is completed
+                product.Stock -= item.Quantity;
 
                 totalAmount += lineTotal;
             }
