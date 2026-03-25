@@ -78,10 +78,11 @@ namespace ECommerceApp.Infrastructure.Repositories
                 throw new BadRequestException(string.Join(" | ", result.Errors.Select(e => e.Description)));
         }
 
-        public Task<AppUser?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+        public Task<AppUser?> GetByRefreshTokenAsync(string refreshTokenHash, CancellationToken cancellationToken = default)
         {
-            return _context.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken, cancellationToken);
+            return _context.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshTokenHash, cancellationToken);
         }
+
         public async Task<Dictionary<string, IList<string>>> GetRolesByUserIdsAsync(IEnumerable<string> userIds, CancellationToken cancellationToken)
         {
             var ids = userIds

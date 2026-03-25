@@ -27,7 +27,7 @@ namespace ECommerceApp.API.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {
-            var result = await _authenticationService.CreateTokenByRefreshTokenAsync(request.RefreshToken);
+            var result = await _authenticationService.RefreshTokenAsync(request.RefreshToken);
             return Ok(result);
         }
 

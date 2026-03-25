@@ -10,7 +10,7 @@ namespace ECommerceApp.Application.Interfaces
 { 
     public interface IUserRepository
     {
-        Task<AppUser?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
+        Task<AppUser?> GetByRefreshTokenAsync(string refreshTokenHash, CancellationToken cancellationToken = default);
         Task<AppUser?> GetByIdAsync(string userId, CancellationToken cancellationToken);
         Task<AppUser?> GetByEmailOrUserNameAsync(string emailOrUserName, CancellationToken cancellationToken);
 

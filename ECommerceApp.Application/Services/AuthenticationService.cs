@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using ECommerceApp.Application.Common.Helpers;
 using ECommerceApp.Application.DTOs;
 using ECommerceApp.Application.DTOs.Users;
 using ECommerceApp.Application.Extensions;
@@ -48,7 +49,7 @@ public class AuthenticationService : IAuthenticationService
 
         var tokenDto = await _tokenService.CreateTokenAsync(user, roles);
 
-        user.RefreshToken = tokenDto.RefreshToken;
+        user.RefreshToken = RefreshTokenHasher.Hash(tokenDto.RefreshToken);
         user.RefreshTokenExpiration = tokenDto.RefreshTokenExpiration;
 
         var update = await _userManager.UpdateAsync(user);
@@ -62,11 +63,12 @@ public class AuthenticationService : IAuthenticationService
         return tokenDto;
     }
 
-    public async Task<TokenDto> CreateTokenByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+    public async Task<TokenDto> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var user = await _userRepository.GetByRefreshTokenAsync(refreshToken, cancellationToken);
+        var hashedRefreshToken = RefreshTokenHasher.Hash(refreshToken);
+        var user = await _userRepository.GetByRefreshTokenAsync(hashedRefreshToken, cancellationToken);
 
         if (user is null || user.RefreshTokenExpiration < DateTime.UtcNow)
         {
@@ -77,7 +79,7 @@ public class AuthenticationService : IAuthenticationService
         var roles = await _userManager.GetRolesAsync(user);
         var tokenDto = await _tokenService.CreateTokenAsync(user, roles);
 
-        user.RefreshToken = tokenDto.RefreshToken;
+        user.RefreshToken = RefreshTokenHasher.Hash(tokenDto.RefreshToken);
         user.RefreshTokenExpiration = tokenDto.RefreshTokenExpiration;
 
         var update = await _userManager.UpdateAsync(user);
@@ -153,7 +155,9 @@ public class AuthenticationService : IAuthenticationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var user = await _userRepository.GetByRefreshTokenAsync(refreshToken, cancellationToken);
+        var hashedRefreshToken = RefreshTokenHasher.Hash(refreshToken);
+        var user = await _userRepository.GetByRefreshTokenAsync(hashedRefreshToken, cancellationToken);
+
         if (user is null)
             return;
 
