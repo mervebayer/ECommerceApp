@@ -17,14 +17,12 @@ namespace ECommerceApp.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin,StoreManager,Customer")]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
             var data = await _categoryService.GetAllAsync(cancellationToken);
             return Ok(data);
         }
         [HttpGet("{id:long:min(1)}")]
-        [Authorize(Roles = "Admin,StoreManager,Customer")]
         public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         {
             var data = await _categoryService.GetByIdAsync(id, cancellationToken);

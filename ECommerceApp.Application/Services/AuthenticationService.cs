@@ -148,4 +148,24 @@ public class AuthenticationService : IAuthenticationService
             throw new BadRequestException("A technical error occurred during the registration process.");
         }
     }
+
+    public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await _userRepository.GetByRefreshTokenAsync(refreshToken, cancellationToken);
+        if (user is null)
+            return;
+
+        user.RefreshToken = null;
+        user.RefreshTokenExpiration = null;
+
+        var update = await _userManager.UpdateAsync(user);
+        if (!update.Succeeded)
+        {
+            var errors = string.Join(", ", update.Errors.Select(e => e.Description));
+            throw new BadRequestException($"Logout failed: {errors}");
+        }
+    }
+
 }

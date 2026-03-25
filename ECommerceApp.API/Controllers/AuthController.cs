@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Application.DTOs;
+using ECommerceApp.Application.DTOs.Auth;
 using ECommerceApp.Application.DTOs.Users;
 using ECommerceApp.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -24,16 +25,26 @@ namespace ECommerceApp.API.Controllers
         }
 
         [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken(string refreshToken)
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {
-            var result = await _authenticationService.CreateTokenByRefreshTokenAsync(refreshToken);
+            var result = await _authenticationService.CreateTokenByRefreshTokenAsync(request.RefreshToken);
             return Ok(result);
         }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto registerDto)
         {
             var result = await _authenticationService.RegisterAsync(registerDto);
             return Ok(result);
         }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto request)
+        {
+            await _authenticationService.LogoutAsync(request.RefreshToken);
+            return NoContent();
+        }
+
+
     }
 }
