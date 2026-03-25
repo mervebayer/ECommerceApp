@@ -11,6 +11,7 @@ namespace ECommerceApp.Domain.Entities
     {
         // Non-nullable property initialized by EF Core at runtime (null-forgiving used to suppress compiler warning)
         public string UserId { get; set; } = default!;
+        public string OrderNumber { get; set; } = null!;
         public decimal TotalAmount { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();

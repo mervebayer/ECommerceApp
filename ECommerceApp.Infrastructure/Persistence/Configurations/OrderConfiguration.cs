@@ -32,6 +32,8 @@ namespace ECommerceApp.Infrastructure.Persistence.Configurations
                 .WithOne(x => x.Order)
                 .HasForeignKey(x => x.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(x => x.OrderNumber).IsUnique();
         }
     }
 }

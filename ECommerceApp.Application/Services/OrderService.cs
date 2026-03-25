@@ -18,6 +18,7 @@ namespace ECommerceApp.Application.Services
 {
     public class OrderService : IOrderService
     {
+        private readonly IOrderNumberGenerator _orderNumberGenerator;
         private readonly IOrderRepository _orderRepository;
         private readonly IBasketRepository _basketRepository;
         private readonly IProductRepository _productRepository;
@@ -25,7 +26,7 @@ namespace ECommerceApp.Application.Services
         private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -33,6 +34,7 @@ namespace ECommerceApp.Application.Services
             _unitOfWork = unitOfWork;
             _logger = logger;
             _mapper = mapper;
+            _orderNumberGenerator = orderNumberGenerator;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -158,6 +160,7 @@ namespace ECommerceApp.Application.Services
 
             var order = new Order
             {
+                OrderNumber = _orderNumberGenerator.Generate(),
                 UserId = userId,
                 Status = OrderStatus.Pending
             };
@@ -215,7 +218,7 @@ namespace ECommerceApp.Application.Services
             _logger.LogInformation("Basket cleared after checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id );
 
             return new CreateOrderResponseDto(
-                order.Id,
+                order.OrderNumber,
                 order.TotalAmount,
                 order.Status.ToString(),
                 order.Items.Count

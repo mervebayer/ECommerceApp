@@ -33,7 +33,11 @@ namespace ECommerceApp.API.Controllers
 
             var result = await _orderService.CreateOrderAsync(userId, basketId, request, cancellationToken);
 
-            return Ok(result);
+            return Ok(new
+            {
+                message = "Your order has been created successfully.",
+                data = result
+            });
         }
 
 

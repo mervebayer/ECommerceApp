@@ -34,6 +34,7 @@ namespace ECommerceApp.Application.Mappings
 
             CreateMap<Order, OrderListDto>()
                 .ForCtorParam(nameof(OrderListDto.OrderId), opt => opt.MapFrom(src => src.Id))
+                .ForCtorParam(nameof(OrderListDto.OrderNumber), opt => opt.MapFrom(src => src.OrderNumber))
                 .ForCtorParam(nameof(OrderListDto.TotalAmount), opt => opt.MapFrom(src => src.TotalAmount))
                 .ForCtorParam(nameof(OrderListDto.Status), opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForCtorParam(nameof(OrderListDto.ItemCount), opt => opt.MapFrom(src => src.Items.Count))
@@ -48,6 +49,7 @@ namespace ECommerceApp.Application.Mappings
 
             CreateMap<Order, OrderDetailDto>()
                 .ForCtorParam(nameof(OrderDetailDto.OrderId), opt => opt.MapFrom(src => src.Id))
+                .ForCtorParam(nameof(OrderListDto.OrderNumber), opt => opt.MapFrom(src => src.OrderNumber))
                 .ForCtorParam(nameof(OrderDetailDto.TotalAmount), opt => opt.MapFrom(src => src.TotalAmount))
                 .ForCtorParam(nameof(OrderDetailDto.Status), opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForCtorParam(nameof(OrderDetailDto.CreatedDate), opt => opt.MapFrom(src => src.CreatedDate))
