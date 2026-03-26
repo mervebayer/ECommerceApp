@@ -82,7 +82,6 @@ namespace ECommerceApp.Infrastructure.Repositories
         {
             return _context.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshTokenHash, cancellationToken);
         }
-
         public async Task<Dictionary<string, IList<string>>> GetRolesByUserIdsAsync(IEnumerable<string> userIds, CancellationToken cancellationToken)
         {
             var ids = userIds

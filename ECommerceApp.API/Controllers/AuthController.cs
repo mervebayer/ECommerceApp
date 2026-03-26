@@ -27,7 +27,7 @@ namespace ECommerceApp.API.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {
-            var result = await _authenticationService.RefreshTokenAsync(request.RefreshToken);
+            var result = await _authenticationService.RefreshTokenAsync(request);
             return Ok(result);
         }
 
@@ -41,7 +41,7 @@ namespace ECommerceApp.API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto request)
         {
-            await _authenticationService.LogoutAsync(request.RefreshToken);
+            await _authenticationService.LogoutAsync(request);
             return NoContent();
         }
 

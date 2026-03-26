@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using ECommerceApp.Application.Common.Helpers;
 using ECommerceApp.Application.DTOs;
+using ECommerceApp.Application.DTOs.Auth;
 using ECommerceApp.Application.DTOs.Users;
 using ECommerceApp.Application.Extensions;
 using ECommerceApp.Application.Interfaces;
@@ -19,9 +20,11 @@ public class AuthenticationService : IAuthenticationService
     private readonly IMapper _mapper;
     private readonly IValidator<UserRegisterDto> _registerValidator;
     private readonly IUserRepository _userRepository;
+    private readonly IValidator<LoginDto> _loginValidator;
+    private readonly IValidator<RefreshTokenRequestDto> _refreshTokenValidator;
     private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(UserManager<AppUser> userManager, ITokenService tokenService, IMapper mapper, IValidator<UserRegisterDto> registerValidator, IUserRepository userRepository, ILogger<AuthenticationService> logger)
+    public AuthenticationService(UserManager<AppUser> userManager, ITokenService tokenService, IMapper mapper, IValidator<UserRegisterDto> registerValidator, IUserRepository userRepository, ILogger<AuthenticationService> logger, IValidator<LoginDto> loginValidator, IValidator<RefreshTokenRequestDto> refreshTokenValidator)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -29,11 +32,16 @@ public class AuthenticationService : IAuthenticationService
         _registerValidator = registerValidator;
         _userRepository = userRepository;
         _logger = logger;
+        _loginValidator = loginValidator;
+        _refreshTokenValidator = refreshTokenValidator;
     }
 
     public async Task<TokenDto> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        var validationResult = await _loginValidator.ValidateAsync(loginDto, cancellationToken);
+        validationResult.ThrowIfInvalid();
 
         var user =
             await _userManager.FindByEmailAsync(loginDto.UsernameOrEmail)
@@ -63,11 +71,14 @@ public class AuthenticationService : IAuthenticationService
         return tokenDto;
     }
 
-    public async Task<TokenDto> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+    public async Task<TokenDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var hashedRefreshToken = RefreshTokenHasher.Hash(refreshToken);
+        var validationResult = await _refreshTokenValidator.ValidateAsync(request, cancellationToken);
+        validationResult.ThrowIfInvalid();
+
+        var hashedRefreshToken = RefreshTokenHasher.Hash(request.RefreshToken);
         var user = await _userRepository.GetByRefreshTokenAsync(hashedRefreshToken, cancellationToken);
 
         if (user is null || user.RefreshTokenExpiration < DateTime.UtcNow)
@@ -151,11 +162,14 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
+    public async Task LogoutAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var hashedRefreshToken = RefreshTokenHasher.Hash(refreshToken);
+        var validationResult = await _refreshTokenValidator.ValidateAsync(request, cancellationToken);
+        validationResult.ThrowIfInvalid();
+
+        var hashedRefreshToken = RefreshTokenHasher.Hash(request.RefreshToken);
         var user = await _userRepository.GetByRefreshTokenAsync(hashedRefreshToken, cancellationToken);
 
         if (user is null)
