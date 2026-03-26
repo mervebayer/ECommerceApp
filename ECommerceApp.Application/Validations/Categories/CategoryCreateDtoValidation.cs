@@ -12,15 +12,15 @@ namespace ECommerceApp.Application.Validations.Categories
 {
     public class CategoryCreateDtoValidation : AbstractValidator<CategoryCreateDto>
     {
-        private readonly IGenericRepository<Category> _categoryRepository;
-        public CategoryCreateDtoValidation(IGenericRepository<Category> categoryRepository)
+        //private readonly IGenericRepository<Category> _categoryRepository;
+        //public CategoryCreateDtoValidation(IGenericRepository<Category> categoryRepository)
+        public CategoryCreateDtoValidation()
         {
-            _categoryRepository = categoryRepository;
-
+       
             RuleFor(x => x.Name).NotEmpty().WithMessage("{PropertyName} is required.")
-            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.")
+            .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters.");
                 //.MustAsync(BeUniqueName)
-                .WithMessage("A category with this name already exists.");
+                //.WithMessage("A category with this name already exists.");
 
         }
 

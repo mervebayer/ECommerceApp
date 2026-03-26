@@ -21,6 +21,7 @@ namespace ECommerceApp.Infrastructure.Persistence
         public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<UserAddress> UserAddresses { get; set; }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

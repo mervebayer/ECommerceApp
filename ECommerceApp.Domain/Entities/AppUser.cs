@@ -31,5 +31,6 @@ namespace ECommerceApp.Domain.Entities
         public bool IsDeleted { get; set; }
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiration { get; set; }
+        public ICollection<UserAddress> Addresses { get; set; } = new List<UserAddress>();
     }
 }

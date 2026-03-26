@@ -19,6 +19,7 @@ namespace ECommerceApp.Application.Extensions.DependencyInjection
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IOrderNumberGenerator, OrderNumberGenerator>();
+            services.AddScoped<IUserAddressService, UserAddressService>();
 
             services.AddAutoMapper(_ => { }, typeof(MappingProfile).Assembly);
             services.AddValidatorsFromAssembly(typeof(ProductCreateDtoValidator).Assembly);

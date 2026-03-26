@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using ECommerceApp.Application.DTOs.Addresses;
 using ECommerceApp.Application.DTOs.Categories;
 using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.Products;
@@ -28,6 +29,10 @@ namespace ECommerceApp.Application.Mappings
             CreateMap<UserRegisterDto, AppUser>();
             CreateMap<AppUser, UserDto>();
             CreateMap<ProductImage, ProductImageDto>();
+
+            CreateMap<UserAddress, UserAddressDto>();
+            CreateMap<CreateUserAddressDto, UserAddress>();
+            CreateMap<UpdateUserAddressDto, UserAddress>();
 
             // NOTE: AutoMapper uses constructor mapping for positional records. 
             // Since OrderListDto is a positional record, use ForCtorParam instead of ForMember.
