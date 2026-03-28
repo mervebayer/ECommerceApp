@@ -1,12 +1,14 @@
 ﻿using AutoMapper;
 using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.QueryParams;
+using ECommerceApp.Application.Extensions;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Enums;
 using ECommerceApp.Domain.Exceptions;
 using ECommerceApp.Domain.Interfaces;
 using ECommerceApp.Domain.Interfaces.Repositories;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -22,11 +24,13 @@ namespace ECommerceApp.Application.Services
         private readonly IOrderRepository _orderRepository;
         private readonly IBasketRepository _basketRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IUserAddressRepository _userAddressRepository;
+        private readonly IValidator<CreateOrderRequestDto> _createOrderValidator;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -35,6 +39,8 @@ namespace ECommerceApp.Application.Services
             _logger = logger;
             _mapper = mapper;
             _orderNumberGenerator = orderNumberGenerator;
+            _userAddressRepository = userAddressRepository;
+            _createOrderValidator = createOrderValidator;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -121,12 +127,15 @@ namespace ECommerceApp.Application.Services
      
         public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
+            var validationResult = await _createOrderValidator.ValidateAsync(request, cancellationToken);
+            validationResult.ThrowIfInvalid();
+
             _logger.LogInformation("CreateOrder started. UserId={UserId}, BasketId={BasketId}", userId, basketId);
 
             if (string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("CreateOrder failed: user is not authenticated.");
-                throw new UnauthorizedAccessException("User is not authenticated");
+                throw new UnauthorizedException("User is not authenticated");
             }
 
             if (string.IsNullOrWhiteSpace(basketId))
@@ -141,6 +150,13 @@ namespace ECommerceApp.Application.Services
             {
                 _logger.LogWarning("CreateOrder failed: basket is empty. UserId={UserId}, BasketId={BasketId}", userId, basketId);
                 throw new BusinessRuleException("Basket is empty.");
+            }
+
+            var address = await _userAddressRepository.GetByIdAndUserIdAsync(request.UserAddressId, userId, cancellationToken);
+            if (address is null)
+            {
+                _logger.LogWarning("CreateOrder failed: address not found for user. UserId={UserId}, AddressId={AddressId}", userId, request.UserAddressId);
+                throw new BusinessRuleException("Address not found.");
             }
 
             var productIds = basket.Items.Select(x => x.ProductId).Distinct().ToList();
@@ -164,6 +180,8 @@ namespace ECommerceApp.Application.Services
                 UserId = userId,
                 Status = OrderStatus.Pending
             };
+
+            ApplyShippingAddress(order, address);
 
             decimal totalAmount = 0m;
 
@@ -252,5 +270,18 @@ namespace ECommerceApp.Application.Services
                     return false;
             }
         }
+
+        private static void ApplyShippingAddress(Order order, UserAddress address)
+        {
+            order.ShippingTitle = address.Title;
+            order.ShippingContactName = address.ContactName;
+            order.ShippingPhoneNumber = address.PhoneNumber;
+            order.ShippingCountry = address.Country;
+            order.ShippingCity = address.City;
+            order.ShippingDistrict = address.District;
+            order.ShippingPostalCode = address.PostalCode;
+            order.ShippingAddressLine = address.AddressLine;
+        }
+
     }
 }

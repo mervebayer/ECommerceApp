@@ -44,9 +44,7 @@ namespace ECommerceApp.Infrastructure.Persistence
                     Email = adminEmail,
                     EmailConfirmed = true,
                     FirstName = "System",
-                    LastName = "Administrator",
-                    City = "Istanbul",
-                    Address = "Headquarters Main Office"
+                    LastName = "Administrator"
                 };
                 var password = configuration["AdminPassword"];
                 var result = await userManager.CreateAsync(adminUser, password ?? "AdminPass123!");

@@ -15,6 +15,14 @@ namespace ECommerceApp.Domain.Entities
         public decimal TotalAmount { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
+        public string ShippingTitle { get; set; } = null!;
+        public string ShippingContactName { get; set; } = null!;
+        public string ShippingPhoneNumber { get; set; } = null!;
+        public string ShippingCountry { get; set; } = null!;
+        public string ShippingCity { get; set; } = null!;
+        public string ShippingDistrict { get; set; } = null!;
+        public string ShippingPostalCode { get; set; } = null!;
+        public string ShippingAddressLine { get; set; } = null!;
 
     }
 }

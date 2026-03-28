@@ -19,12 +19,6 @@ namespace ECommerceApp.Application.Validations.Users
             RuleFor(x => x.LastName).NotEmpty().WithMessage("Last name is required.")
                                      .MinimumLength(2).WithMessage("Last name must be at least 2 characters.")
                                      .MaximumLength(100).WithMessage("Last name cannot exceed 100 characters.");
-            RuleFor(x => x.City).NotEmpty().WithMessage("City is required.")
-                                  .MinimumLength(2).WithMessage("City must be at least 2 characters.")
-                                  .MaximumLength(50).WithMessage("City cannot exceed 50 characters.");
-            RuleFor(x => x.Address).NotEmpty().WithMessage("Address is required.")
-                                      .MinimumLength(5).WithMessage("Address must be at least 5 characters.")
-                                      .MaximumLength(500).WithMessage("Address cannot exceed 500 characters.");
             RuleFor(x => x.UserName).NotEmpty().WithMessage("UserName is required.")
                                       .MinimumLength(4).WithMessage("UserName must be at least 4 characters.")
                                       .MaximumLength(20).WithMessage("UserName cannot exceed 20 characters.")

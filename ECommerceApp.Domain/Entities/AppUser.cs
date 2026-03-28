@@ -19,13 +19,6 @@ namespace ECommerceApp.Domain.Entities
         [MinLength(2)]
         [MaxLength(100)]
         public string LastName { get; set; }
-        [Required]
-        [MaxLength(50)]
-        public string City { get; set; }
-        [Required]
-        [MinLength(5)]
-        [MaxLength(500)]
-        public string Address { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }
         public bool IsDeleted { get; set; }

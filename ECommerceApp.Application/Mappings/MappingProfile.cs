@@ -54,11 +54,20 @@ namespace ECommerceApp.Application.Mappings
 
             CreateMap<Order, OrderDetailDto>()
                 .ForCtorParam(nameof(OrderDetailDto.OrderId), opt => opt.MapFrom(src => src.Id))
-                .ForCtorParam(nameof(OrderListDto.OrderNumber), opt => opt.MapFrom(src => src.OrderNumber))
+                .ForCtorParam(nameof(OrderDetailDto.OrderNumber), opt => opt.MapFrom(src => src.OrderNumber))
                 .ForCtorParam(nameof(OrderDetailDto.TotalAmount), opt => opt.MapFrom(src => src.TotalAmount))
                 .ForCtorParam(nameof(OrderDetailDto.Status), opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForCtorParam(nameof(OrderDetailDto.CreatedDate), opt => opt.MapFrom(src => src.CreatedDate))
-                .ForCtorParam(nameof(OrderDetailDto.Items), opt => opt.MapFrom(src => src.Items));
+                .ForCtorParam(nameof(OrderDetailDto.Items), opt => opt.MapFrom(src => src.Items))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingTitle), opt => opt.MapFrom(src => src.ShippingTitle))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingContactName), opt => opt.MapFrom(src => src.ShippingContactName))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingPhoneNumber), opt => opt.MapFrom(src => src.ShippingPhoneNumber))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingCountry), opt => opt.MapFrom(src => src.ShippingCountry))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingCity), opt => opt.MapFrom(src => src.ShippingCity))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingDistrict), opt => opt.MapFrom(src => src.ShippingDistrict))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingPostalCode), opt => opt.MapFrom(src => src.ShippingPostalCode))
+                .ForCtorParam(nameof(OrderDetailDto.ShippingAddressLine), opt => opt.MapFrom(src => src.ShippingAddressLine));
+
         }
     }
 }
