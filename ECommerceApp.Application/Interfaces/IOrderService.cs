@@ -17,5 +17,6 @@ namespace ECommerceApp.Application.Interfaces
         Task<OrderDetailDto> GetOrderByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken);
         Task CancelOrderAsync(string userId, long orderId, CancellationToken cancellationToken);
         Task UpdateOrderStatusAsync(string userId, long orderId, OrderStatus newStatus, CancellationToken cancellationToken);
+        Task CancelOrderByAdminAsync(long orderId, CancellationToken cancellationToken);
     }
 }

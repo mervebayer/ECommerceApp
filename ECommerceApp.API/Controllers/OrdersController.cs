@@ -84,6 +84,14 @@ namespace ECommerceApp.API.Controllers
         }
 
         [Authorize(Roles = "Admin,StoreManager")]
+        [HttpPost("{orderId:long}/admin-cancel")]
+        public async Task<IActionResult> CancelOrderAsAdminAsync(long orderId, CancellationToken cancellationToken)
+        {
+            await _orderService.CancelOrderByAdminAsync(orderId, cancellationToken);
+            return NoContent();
+        }
+
+        [Authorize(Roles = "Admin,StoreManager")]
         [HttpPatch("{orderId:long}/status")]
         public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody] UpdateOrderStatusRequestDto request, CancellationToken cancellationToken)
         {
@@ -92,11 +100,7 @@ namespace ECommerceApp.API.Controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
-            await _orderService.UpdateOrderStatusAsync(
-                userId,
-                orderId,
-                request.Status,
-                cancellationToken);
+            await _orderService.UpdateOrderStatusAsync(userId, orderId, request.Status, cancellationToken);
 
             return NoContent();
         }

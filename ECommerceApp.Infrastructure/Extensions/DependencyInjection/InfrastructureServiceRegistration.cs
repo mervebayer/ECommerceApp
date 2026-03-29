@@ -61,6 +61,9 @@ namespace ECommerceApp.Infrastructure.Extensions.DependencyInjection
             services.Configure<JwtSettings>(configuration.GetSection("JWTSettings"));
             services.AddSingleton<IJwtProvider, JwtProvider>();
 
+            services.Configure<CheckoutSettings>(configuration.GetSection("CheckoutSettings"));
+            services.AddScoped<ICheckoutSettings>(sp =>sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CheckoutSettings>>().Value);
+
             return services;
         }
     }

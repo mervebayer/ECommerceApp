@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Domain.Entities;
+using ECommerceApp.Domain.Enums;
 using ECommerceApp.Domain.Interfaces.Repositories;
 using ECommerceApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,59 @@ namespace ECommerceApp.Infrastructure.Repositories
         {
             return await _context.Orders.Include(x => x.Items).SingleOrDefaultAsync(x => x.Id == orderId && x.UserId == userId, cancellationToken);
         }
+
+        public async Task<Dictionary<long, int>> GetReservedQuantitiesAsync(IEnumerable<long> productIds, CancellationToken cancellationToken = default)
+        {
+            var ids = productIds.Distinct().ToList();
+            var now = DateTime.UtcNow;
+
+            return await _context.OrderItems
+                .Where(oi => ids.Contains(oi.ProductId) && oi.Order.Status == OrderStatus.PendingPayment && oi.Order.ReservationExpiresAt > now)
+                .GroupBy(oi => oi.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    TotalReserved = g.Sum(x => x.Quantity)
+                })
+                .ToDictionaryAsync(x => x.ProductId, x => x.TotalReserved, cancellationToken);
+        }
+
+        public async Task<List<Order>> GetExpiredPendingPaymentOrdersAsync(CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+
+            return await _context.Orders
+                .Where(x => x.Status == OrderStatus.PendingPayment && x.ReservationExpiresAt <= now)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<long, int>> GetReservedQuantitiesExcludingOrderAsync(IEnumerable<long> productIds,long excludedOrderId, CancellationToken cancellationToken = default)
+        {
+            var ids = productIds.Distinct().ToList();
+            var now = DateTime.UtcNow;
+
+            return await _context.OrderItems
+                .Where(oi =>
+                    ids.Contains(oi.ProductId) &&
+                    oi.Order.Status == OrderStatus.PendingPayment &&
+                    oi.Order.ReservationExpiresAt > now &&
+                    oi.OrderId != excludedOrderId)
+                .GroupBy(oi => oi.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    TotalReserved = g.Sum(x => x.Quantity)
+                })
+                .ToDictionaryAsync(x => x.ProductId, x => x.TotalReserved, cancellationToken);
+        }
+
+        public async Task<Order?> GetOrderByIdWithItemsAsync(long orderId, CancellationToken cancellationToken = default)
+        {
+            return await _context.Orders
+                .Include(x => x.Items)
+                .SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
+        }
+
 
     }
 }

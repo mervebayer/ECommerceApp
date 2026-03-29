@@ -8,12 +8,14 @@ namespace ECommerceApp.Domain.Enums
 {
     public enum OrderStatus
     {
-        Pending = 1,
+        PendingPayment = 1,
         Confirmed = 2,
-        Cancelled = 3,
-        Completed = 4,
-        Preparing = 5,
-        Shipped = 6,
-        Delivered = 7
+        Preparing = 3,
+        Shipped = 4,
+        Delivered = 5,
+        Completed = 6,
+        Cancelled = 7,
+        Expired = 8,
+        DeliveryFailed = 9
     }
 }

@@ -29,8 +29,10 @@ namespace ECommerceApp.Application.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
+        private readonly ICheckoutSettings _checkoutSettings;
 
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator)
+
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, ICheckoutSettings checkoutSettings)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -41,10 +43,13 @@ namespace ECommerceApp.Application.Services
             _orderNumberGenerator = orderNumberGenerator;
             _userAddressRepository = userAddressRepository;
             _createOrderValidator = createOrderValidator;
+            _checkoutSettings = checkoutSettings;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var totalCount = await _orderRepository.CountAsync(userId, cancellationToken);
 
             if (totalCount == 0)
@@ -69,6 +74,8 @@ namespace ECommerceApp.Application.Services
 
         public async Task<OrderDetailDto> GetOrderByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken)
                     ?? throw new NotFoundException("Order not found.");
 
@@ -76,116 +83,149 @@ namespace ECommerceApp.Application.Services
 
         }
 
-        // TODO: stock control 
-        public async Task CancelOrderAsync(string userId, long orderId, CancellationToken cancellationToken) {
-            
+        public async Task CancelOrderAsync(string userId, long orderId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken)
-                 ?? throw new NotFoundException("Order not found.");
-            if (order.Status != OrderStatus.Pending)
-                throw new BusinessRuleException("Only pending orders can be cancelled.");
+                ?? throw new NotFoundException("Order not found.");
 
-            var productIds = order.Items.Select(x => x.ProductId).Distinct().ToList();
-
-            var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
-
-            var productDictionary = products.ToDictionary(x => x.Id);
-
-            foreach (var item in order.Items)
-            {
-                if (!productDictionary.TryGetValue(item.ProductId, out var product))
-                    throw new NotFoundException($"Product with id {item.ProductId} was not found.");
-                product.Stock += item.Quantity;
-            }
-            order.Status = OrderStatus.Cancelled;
-
+            await CancelOrderInternalAsync(order, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            _logger.LogInformation("Order cancelled. OrderId={OrderId}, UserId={UserId}", orderId, userId);
+            _logger.LogInformation("Order cancelled by user. OrderId={OrderId}, UserId={UserId}", orderId, userId);
+        }
+
+        public async Task CancelOrderByAdminAsync(long orderId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _orderRepository.GetOrderByIdWithItemsAsync(orderId, cancellationToken)
+                ?? throw new NotFoundException("Order not found.");
+
+            await CancelOrderInternalAsync(order, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation("Order cancelled by admin. OrderId={OrderId}", orderId);
         }
 
         public async Task UpdateOrderStatusAsync(string userId, long orderId, OrderStatus newStatus, CancellationToken cancellationToken)
         {
-            var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _orderRepository.GetOrderByIdWithItemsAsync(orderId, cancellationToken);
 
             if (order is null)
                 throw new NotFoundException("Order not found.");
 
-            if (!IsValidStatusTransition(order.Status, newStatus)) {
+            if (!IsValidStatusTransition(order.Status, newStatus))          
+                throw new BusinessRuleException($"Invalid status transition from {order.Status} to {newStatus}.");
+            
+            //stock update
+            if (order.Status == OrderStatus.PendingPayment && newStatus == OrderStatus.Confirmed)
+            {
+                var productIds = order.Items.Select(x => x.ProductId).Distinct().ToList();
 
-                _logger.LogWarning("Invalid order status transition. OrderId={OrderId}, Current={Current}, Next={Next}", orderId, order.Status, newStatus);
-                throw new InvalidOperationException("Invalid status transition.");
+                var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
+                var productDictionary = products.ToDictionary(x => x.Id);
+
+                var reservedQuantities = await _orderRepository.GetReservedQuantitiesExcludingOrderAsync(productIds, order.Id, cancellationToken);
+
+                foreach (var item in order.Items)
+                {
+                    if (!productDictionary.TryGetValue(item.ProductId, out var product))
+                        throw new BusinessRuleException($"Product with id {item.ProductId} was not found.");
+
+                    var reservedByOthers = reservedQuantities.GetValueOrDefault(item.ProductId, 0);
+                    var availableStock = product.Stock - reservedByOthers;
+
+                    if (availableStock < item.Quantity)                    
+                        throw new BusinessRuleException($"Insufficient available stock for product '{product.Name}'. Available: {availableStock}, Required: {item.Quantity}.");                   
+                }
+
+                foreach (var item in order.Items)
+                {
+                    var product = productDictionary[item.ProductId];
+                    product.Stock -= item.Quantity;
+                }
+
+                order.ReservationExpiresAt = null;
             }
-                
+
+            if (newStatus == OrderStatus.Expired)
+            {
+                order.ReservationExpiresAt = null;
+            }
 
             order.Status = newStatus;
 
+            _orderRepository.Update(order);
             await _unitOfWork.CommitAsync(cancellationToken);
-    
+
+            _logger.LogInformation("Order status updated successfully. OrderId={OrderId}, UserId={UserId}, NewStatus={NewStatus}", orderId, userId, newStatus);
         }
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)
-     
+
         public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             var validationResult = await _createOrderValidator.ValidateAsync(request, cancellationToken);
             validationResult.ThrowIfInvalid();
 
-            _logger.LogInformation("CreateOrder started. UserId={UserId}, BasketId={BasketId}", userId, basketId);
+            // TODO: Move pending payment expiration cleanup to a background service instead of triggering it during checkout.
+            await ExpirePendingPaymentOrdersAsync(cancellationToken);
 
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                _logger.LogWarning("CreateOrder failed: user is not authenticated.");
+            if (string.IsNullOrWhiteSpace(userId))           
                 throw new UnauthorizedException("User is not authenticated");
-            }
+            
 
             if (string.IsNullOrWhiteSpace(basketId))
-            {
-                _logger.LogWarning("CreateOrder failed: basketId is missing. UserId={UserId}", userId);
                 throw new BusinessRuleException("Basket was not found.");
-            }
+            
 
             var basket = await _basketRepository.GetBasketAsync(basketId);
 
-            if (basket is null || basket.Items.Count == 0)
-            {
-                _logger.LogWarning("CreateOrder failed: basket is empty. UserId={UserId}, BasketId={BasketId}", userId, basketId);
+            if (basket is null || basket.Items.Count == 0)            
                 throw new BusinessRuleException("Basket is empty.");
-            }
-
+           
             var address = await _userAddressRepository.GetByIdAndUserIdAsync(request.UserAddressId, userId, cancellationToken);
-            if (address is null)
-            {
-                _logger.LogWarning("CreateOrder failed: address not found for user. UserId={UserId}, AddressId={AddressId}", userId, request.UserAddressId);
+            if (address is null)           
                 throw new BusinessRuleException("Address not found.");
-            }
-
+            
             var productIds = basket.Items.Select(x => x.ProductId).Distinct().ToList();
 
             var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
-
             var productDictionary = products.ToDictionary(x => x.Id);
+
+            var reservedQuantities = await _orderRepository.GetReservedQuantitiesAsync(productIds, cancellationToken);
 
             foreach (var item in basket.Items)
             {
                 if (!productDictionary.TryGetValue(item.ProductId, out var product))
                     throw new BusinessRuleException($"Product with id {item.ProductId} was not found.");
 
-                if (product.Stock < item.Quantity)
-                    throw new BusinessRuleException($"Insufficient stock for product '{product.Name}'.");
+                var reservedQuantity = reservedQuantities.GetValueOrDefault(item.ProductId, 0);
+                var availableStock = product.Stock - reservedQuantity;
+
+                if (availableStock < item.Quantity)
+                {
+                    throw new BusinessRuleException($"Insufficient available stock for product '{product.Name}'. Available: {availableStock}, Requested: {item.Quantity}.");
+                }
             }
 
             var order = new Order
             {
                 OrderNumber = _orderNumberGenerator.Generate(),
                 UserId = userId,
-                Status = OrderStatus.Pending
+                Status = OrderStatus.PendingPayment,
+                ReservationExpiresAt = DateTime.UtcNow.AddMinutes(_checkoutSettings.ReservationTimeoutMinutes)
             };
 
             ApplyShippingAddress(order, address);
 
             decimal totalAmount = 0m;
 
-            foreach(var item in basket.Items)
+            foreach (var item in basket.Items)
             {
                 var product = productDictionary[item.ProductId];
 
@@ -202,38 +242,24 @@ namespace ECommerceApp.Application.Services
                 };
 
                 order.Items.Add(orderItem);
-
-                // TODO: change stock control after payment is completed
-                product.Stock -= item.Quantity;
-
                 totalAmount += lineTotal;
             }
 
             order.TotalAmount = totalAmount;
 
-
             // TODO: Ensure consistency between order persistence (SQL) and basket deletion (Redis).
             // Consider retry, eventual consistency (background service) or event-driven approach
 
             await _orderRepository.AddAsync(order, cancellationToken);
-
             await _unitOfWork.CommitAsync(cancellationToken);
-
-            _logger.LogInformation("Order persisted successfully. OrderId={OrderId}, UserId={UserId}, TotalAmount={TotalAmount}", order.Id, userId, totalAmount);
 
             var basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
             if (!basketDeleted)
             {
-                //Retry: 
-                //_logger.LogWarning("Basket delete failed. Retrying...");
-
-                //basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
-                _logger.LogError("Basket deletion failed after order creation. BasketId={BasketId}, OrderId={OrderId}", basketId,order.Id);
-
-                //throw new BusinessRuleException("Basket could not be cleared after checkout.");
+                _logger.LogError("Basket deletion failed after order creation. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
             }
 
-            _logger.LogInformation("Basket cleared after checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id );
+            _logger.LogInformation("Basket cleared after checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
 
             return new CreateOrderResponseDto(
                 order.OrderNumber,
@@ -242,13 +268,13 @@ namespace ECommerceApp.Application.Services
                 order.Items.Count
             );
         }
-
         private static bool IsValidStatusTransition(OrderStatus current, OrderStatus next)
         {
             switch (current)
             {
-                case OrderStatus.Pending:
-                    return next == OrderStatus.Confirmed || next == OrderStatus.Cancelled;
+                case OrderStatus.PendingPayment:
+                    return next == OrderStatus.Confirmed
+                        || next == OrderStatus.Expired;
 
                 case OrderStatus.Confirmed:
                     return next == OrderStatus.Preparing;
@@ -257,20 +283,24 @@ namespace ECommerceApp.Application.Services
                     return next == OrderStatus.Shipped;
 
                 case OrderStatus.Shipped:
-                    return next == OrderStatus.Delivered;
+                    return next == OrderStatus.Delivered
+                        || next == OrderStatus.DeliveryFailed;
+
+                case OrderStatus.DeliveryFailed:
+                    return next == OrderStatus.Shipped;
 
                 case OrderStatus.Delivered:
                     return next == OrderStatus.Completed;
 
-                case OrderStatus.Cancelled:
                 case OrderStatus.Completed:
+                case OrderStatus.Cancelled:
+                case OrderStatus.Expired:
                     return false;
 
                 default:
                     return false;
             }
         }
-
         private static void ApplyShippingAddress(Order order, UserAddress address)
         {
             order.ShippingTitle = address.Title;
@@ -282,6 +312,47 @@ namespace ECommerceApp.Application.Services
             order.ShippingPostalCode = address.PostalCode;
             order.ShippingAddressLine = address.AddressLine;
         }
+        private async Task ExpirePendingPaymentOrdersAsync(CancellationToken cancellationToken)
+        {
+            var expiredOrders = await _orderRepository.GetExpiredPendingPaymentOrdersAsync(cancellationToken);
+
+            if (!expiredOrders.Any())
+                return;
+
+            foreach (var order in expiredOrders)
+            {
+                order.Status = OrderStatus.Expired;
+                order.ReservationExpiresAt = null;
+                _orderRepository.Update(order);
+            }
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+        }
+        private async Task CancelOrderInternalAsync(Order order, CancellationToken cancellationToken)
+        {
+            if (order.Status != OrderStatus.PendingPayment && order.Status != OrderStatus.Confirmed)
+                throw new BusinessRuleException("Only pending payment or confirmed orders can be cancelled.");
+
+            if (order.Status == OrderStatus.Confirmed)
+            {
+                var productIds = order.Items.Select(x => x.ProductId).Distinct().ToList();
+                var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
+                var productDictionary = products.ToDictionary(x => x.Id);
+
+                foreach (var item in order.Items)
+                {
+                    if (!productDictionary.TryGetValue(item.ProductId, out var product))
+                        throw new NotFoundException($"Product with id {item.ProductId} was not found.");
+
+                    product.Stock += item.Quantity;
+                }
+            }
+
+            order.Status = OrderStatus.Cancelled;
+            order.ReservationExpiresAt = null;
+        }
+
 
     }
 }

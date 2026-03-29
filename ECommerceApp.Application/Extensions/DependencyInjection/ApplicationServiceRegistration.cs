@@ -4,6 +4,7 @@ using ECommerceApp.Application.Mappings;
 using ECommerceApp.Application.Services;
 using ECommerceApp.Application.Validations.Products;
 using FluentValidation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ECommerceApp.Application.Extensions.DependencyInjection
@@ -23,7 +24,6 @@ namespace ECommerceApp.Application.Extensions.DependencyInjection
 
             services.AddAutoMapper(_ => { }, typeof(MappingProfile).Assembly);
             services.AddValidatorsFromAssembly(typeof(ProductCreateDtoValidator).Assembly);
-
             return services;
         }
     }

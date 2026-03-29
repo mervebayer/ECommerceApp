@@ -12,5 +12,10 @@ namespace ECommerceApp.Domain.Interfaces.Repositories
         Task<IReadOnlyList<Order>> GetMyOrdersAsync(string userId, int pageNumber, int pageSize, CancellationToken cancellationToken);
         Task<int> CountAsync(string userId, CancellationToken cancellationToken);
         Task<Order?> GetByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken);
+        Task<Dictionary<long, int>> GetReservedQuantitiesAsync(IEnumerable<long> productIds, CancellationToken cancellationToken = default);
+        Task<List<Order>> GetExpiredPendingPaymentOrdersAsync(CancellationToken cancellationToken = default);
+        Task<Dictionary<long, int>> GetReservedQuantitiesExcludingOrderAsync(IEnumerable<long> productIds, long excludedOrderId, CancellationToken cancellationToken = default);
+        Task<Order?> GetOrderByIdWithItemsAsync(long orderId, CancellationToken cancellationToken = default);
+
     }
 }

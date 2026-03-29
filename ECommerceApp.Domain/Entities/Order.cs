@@ -13,7 +13,7 @@ namespace ECommerceApp.Domain.Entities
         public string UserId { get; set; } = default!;
         public string OrderNumber { get; set; } = null!;
         public decimal TotalAmount { get; set; }
-        public OrderStatus Status { get; set; } = OrderStatus.Pending;
+        public OrderStatus Status { get; set; } = OrderStatus.PendingPayment;
         public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
         public string ShippingTitle { get; set; } = null!;
         public string ShippingContactName { get; set; } = null!;
@@ -23,6 +23,8 @@ namespace ECommerceApp.Domain.Entities
         public string ShippingDistrict { get; set; } = null!;
         public string ShippingPostalCode { get; set; } = null!;
         public string ShippingAddressLine { get; set; } = null!;
+        public DateTime? ReservationExpiresAt { get; set; }
+
 
     }
 }
