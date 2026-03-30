@@ -4,7 +4,6 @@ using ECommerceApp.Application.Mappings;
 using ECommerceApp.Application.Services;
 using ECommerceApp.Application.Validations.Products;
 using FluentValidation;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ECommerceApp.Application.Extensions.DependencyInjection
@@ -21,6 +20,7 @@ namespace ECommerceApp.Application.Extensions.DependencyInjection
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IOrderNumberGenerator, OrderNumberGenerator>();
             services.AddScoped<IUserAddressService, UserAddressService>();
+            services.AddScoped<IUserProfileService, UserProfileService>();
 
             services.AddAutoMapper(_ => { }, typeof(MappingProfile).Assembly);
             services.AddValidatorsFromAssembly(typeof(ProductCreateDtoValidator).Assembly);
