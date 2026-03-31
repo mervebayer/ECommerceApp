@@ -1,19 +1,21 @@
 # ECommerceApp – ASP.NET Core Clean Architecture Backend
 
-A production-oriented e-commerce backend built with ASP.NET Core, structured using Clean Architecture to demonstrate scalable, maintainable, and performance-aware backend design.
+A production-oriented e-commerce backend built with ASP.NET Core and Clean Architecture, designed to demonstrate scalable, maintainable, and performance-aware backend development with real-world concerns such as authentication, validation, distributed caching, address-based checkout, reservation-aware order processing, and structured error handling.
 
-
-## 🎯 Purpose of This Project
+## Purpose of This Project
 
 This project was built to simulate a production-ready backend architecture and demonstrate:
 
-- Clean layering and dependency management
-- Transaction handling and consistency control
-- Real-world authentication flows
-- Scalable data access strategies
-- Maintainable and testable service design
+- Clean layering and dependency boundaries
+- Real-world authentication and authorization flows
+- Maintainable service and repository design
+- Validation-first application logic
+- Distributed basket management with Redis
+- Reservation-aware checkout and stock handling
+- Structured logging and centralized exception handling
+- Performance-focused data access patterns
 
-## 🚀 Tech Stack
+## Tech Stack
 
 - ASP.NET Core Web API
 - Entity Framework Core (Code-First)
@@ -25,8 +27,10 @@ This project was built to simulate a production-ready backend architecture and d
 - AutoMapper
 - Swagger (JWT integrated)
 - SQL Server
-
-## 🏗 Architecture
+- xUnit
+- FluentAssertions
+  
+## Architecture
 
 The project follows a layered Clean Architecture approach:
 
@@ -65,68 +69,98 @@ Dependencies flow inward. The Core layer remains framework-agnostic and independ
 
 ### Key Architectural Decisions
 
-- Clear separation between Service and Repository layers
+- Clear separation between service and repository responsibilities
 - DTO-based API contracts
-- Soft delete implementation via BaseEntity
-- AsNoTracking for read-only performance optimization
+- Soft delete support with global query filters
+- AsNoTracking for read-only query optimization
 - CancellationToken propagation across layers
 - Reusable paging and sorting extensions
-- Redis-based distributed basket system
+- Redis-based distributed basket storage
 - Structured logging with request pipeline monitoring
 
-## 🔐 Authentication & Authorization
+## Authentication & Authorization
 
 - ASP.NET Core Identity integration
 - Custom AppUser
 - JWT Access & Refresh Token support
 - Role-based authorization (Admin, StoreManager, Customer)
+- Refresh token rotation
+- Refresh token hashing before persistence
+- Logout / token revocation support
 - Secure password handling via ASP.NET Identity
 - Swagger JWT integration
 
-## 🛍 Core Features
+## Core Features
 
-### 🧾 Product Management
+### Product Management
 
 - CRUD operations
 - Pagination & sorting
-- Soft delete optimization
+- Validation support
+- Soft delete strategy
 - Performance-focused read queries
 
-### 🗂 Category Module
+### Category Module
 
 - CRUD operations
 - Validation rules
-- Soft delete optimization
+- Soft delete support
 
-### 🖼 Product Image Management
+### Product Image Management
 
 - Cloudinary integration for external image storage
 - PublicId persistence for external storage consistency
 - Main image management logic
 - Ownership validation checks
 
-### 👤 User & Role Management
+### User & Role Management
 
 - Paginated user listing
 - User detail retrieval
 - User role listing
 - Admin role assignment/removal endpoints
 - Batch role loading to avoid N+1 queries in paginated user lists
+
+### User Profile & Settings
+
+- Authenticated profile retrieval
+- Profile update support
+- Password change support
+
+### User Address Management
+- Multiple address support per user
+- Default address selection
+- Ownership-based access control
+- Address-based checkout support
   
-### 🧺 Redis-Based Basket System
+### Redis-Based Basket System
 
 - Distributed basket storage with Redis
-- Add/update/merge item operations
+- Add/update/remove item operations
+- Cookie-based basket access
 - CancellationToken propagation
 
 > Note: Basket-user association (persisting basket across login via token/cookie identity) and automatic basket migration (anonymous → authenticated) are planned.
 
-## ⚙ Cross-Cutting Concerns
+### Orders & Checkout
+
+- Authenticated order creation
+- Address-based checkout using saved user addresses
+- Shipping address snapshot persistence on orders
+- Reservation-based order creation with PendingPayment
+- Reservation expiration support
+- Stock confirmation on order approval
+- Order detail and history endpoints
+- Order status transition rules
+- Cancellation flow for pending and confirmed orders
+
+## Cross-Cutting Concerns
 
 ### Validation
 
 - FluentValidation integration
-- Extension-based automatic validation
+- Validator discovery via assembly scanning
+- Request-level business rule enforcement
 
 ### Error Handling
 
@@ -143,10 +177,11 @@ Dependencies flow inward. The Core layer remains framework-agnostic and independ
 
 ### Security
 
-- JWT authentication & role-based authorization
-- Refresh token support
+- JWT authentication 
+- Role-based authorization
+- Refresh token lifecycle handling
 
-## 🧠 Design Principles Applied
+## Design Principles Applied
 
 - Clean Architecture layering
 - Dependency Inversion Principle
@@ -156,97 +191,102 @@ Dependencies flow inward. The Core layer remains framework-agnostic and independ
 - Single Responsibility Principle
 - Proper transaction boundaries at service level
 
-## 🔄 Continuous Refactoring
+## Continuous Refactoring
 
 The project evolves through structured refactoring such as:
 
-- Soft delete optimization (partial property updates)
+- Soft delete optimization
 - CancellationToken propagation
-- Core interface relocation
 - AsNoTracking performance improvements
-- Paging & sorting moved to reusable extensions
-- Development configuration separation
+- Reusable paging and sorting abstractions
 - Structured logging across request pipeline and service layer
-- The project was fully migrated to a proper Clean Architecture structure, separating:
-	- API
-	- Application
-	- Domain
-	- Infrastructure
+- Address-based checkout design
+- Reservation-aware order flow
+- Profile/settings support
+- Incremental migration toward cleaner dependency boundaries
 
-with enforced dependency direction rules. 
+## Roadmap
 
-## 📌 Roadmap
+### User Management Enhancements
 
-### 👤 User Management Enhancements
-
-- User settings module
-- Address management (multiple addresses support)
-- Profile update flows
+- Email confirmation flow
+- Username/email change policies refinement
+- Profile security improvements
 - Role-based access policy refinements
   
-### 🧾 Order & Payment Module
+### Order & Payment Module
 
-- Order creation workflow
-- Order status management
-- Payment integration structure (mock / provider-ready design)
-- Transaction handling & consistency considerations
+- Payment provider integration
+- Background expiration cleanup for pending payments
+- Admin order management surface
+- Stronger checkout consistency handling: transaction handling & consistency considerations
 
-### 🧺 Basket Improvements
+### Basket Improvements
 
-- Anonymous-to-authenticated basket migration
+- Anonymous-to-authenticated basket merge
 - Basket persistence across login (token-based association)
 - Basket ownership validation
 
-### 🖼 Image Management Improvements
+### Image Management Improvements
 
 - Background cleanup for orphaned Cloudinary files
 - Retry mechanism for failed remote deletions
 - Image processing pipeline (resize/compression)
   
-### 📧 Email Integration
+### Email Integration
 
 - Email service abstraction
 - Registration confirmation email
 - Password reset flow
 - Order confirmation email
 
-### 📦 Global API Improvements
+### Global API Improvements
 
 - Standardized Global Response Wrapper
 - Consistent success/error response structure
 - Improved API versioning strategy
 - Correlation ID tracking for distributed logging
 
-### 🧪 Testing
+### Testing
 
-- Unit tests (xUnit + FluentAssertions)
-- Integration tests
+- Expanded service-level unit tests
+- Integration tests for critical workflows
 - Test coverage improvement
-- Authentication & authorization test scenarios
+- Auth and checkout scenario coverage improvements
 
-### 🐳 DevOps & Deployment
+### DevOps & Deployment
 
 - Docker support
 - CI/CD pipeline
 - Environment-based configuration improvements
 
-### ⚡ Performance & Caching
+### Performance & Caching
 
 - Advanced caching strategies
 - Cache invalidation patterns
 - Query optimization improvements
 - Redis-based distributed caching extensions
 
-## 📦 API ENDPOINTS OVERVIEW
+### Testing
+
+The solution includes an application test project for critical business logic.
+
+Run tests with:
+```
+dotnet test
+```
+
+## API ENDPOINTS OVERVIEW
 
 > All write operations require authentication and appropriate role authorization.
 
-### 🔐 Authentication
+### Authentication
 - POST /api/auth/register
 - POST /api/auth/login
 - POST /api/auth/refresh-token
+- POST /api/auth/logout
 
-### 🧾 Products
+### Products
 - GET /api/products
 - GET /api/products/{id}
 - GET /api/products/category/{categoryId}
@@ -254,45 +294,65 @@ with enforced dependency direction rules.
 - PUT /api/products/{id}
 - DELETE /api/products/{id}
 
-### 🗂 Categories
+### Categories
 - GET /api/categories
 - GET /api/categories/{id}
 - POST /api/categories
 - PUT /api/categories/{id}
 - DELETE /api/categories/{id}
 
-### 🖼 Product Images
+### Product Images
 - POST /api/products/{id}/images
 - PUT /api/products/{productId}/images/{imageId}/main
 - DELETE /api/products/{productId}/images/{imageId}
 
-### 👤 Users
+### Users
 - GET /api/users
 - GET /api/users/{userId}
 - GET /api/users/{userId}/roles
 - POST /api/users/{userId}/roles
 - DELETE /api/users/{userId}/roles/{roleName}
+
+### User Profile
+- GET /api/users/me
+- PUT /api/users/me
+- POST /api/users/change-password
+
+### User Addresses
+- GET /api/useraddresses
+- GET /api/useraddresses/{id}
+- POST /api/useraddresses
+- PUT /api/useraddresses/{id}
+- PATCH /api/useraddresses/{id}/set-default
+- DELETE /api/useraddresses/{id}
   
-### 🧺 Basket (Redis)
+### Basket (Redis)
 - GET /api/basket
 - POST /api/basket/items
 - DELETE /api/basket/{productId}
 
-## ⚙️ INSTALLATION & RUNNING LOCALLY
-### 📌 Requirements
+### Orders
+- POST /api/orders
+- GET /api/orders
+- GET /api/orders/{orderId}
+- POST /api/orders/{orderId}/cancel
+- PATCH /api/orders/{orderId}/status
+
+## INSTALLATION & RUNNING LOCALLY
+### Requirements
 
 - .NET 8 SDK
 - SQL Server
 - Redis
 - Cloudinary account
   
-### 1️⃣ Clone the repository
+### Clone the repository
 
 ```
 git clone https://github.com/your-username/ECommerceApp.git
 cd ECommerceApp
 ```
-### 2️⃣ Configure Database
+### Configure Database
 
 Update the connection string in:
 
@@ -314,6 +374,9 @@ appsettings.Development.json
     "CloudName": "your-cloud-name",
     "ApiKey": "your-api-key",
     "ApiSecret": "your-api-secret"
+  },
+  "CheckoutSettings": {
+    "ReservationTimeoutMinutes": 15
   }
 }
 ```
