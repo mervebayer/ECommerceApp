@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Application.DTOs.Orders;
+using ECommerceApp.Application.DTOs.Orders.Admin;
 using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Enums;
@@ -16,7 +17,10 @@ namespace ECommerceApp.Application.Interfaces
         Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken);
         Task<OrderDetailDto> GetOrderByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken);
         Task CancelOrderAsync(string userId, long orderId, CancellationToken cancellationToken);
-        Task UpdateOrderStatusAsync(string userId, long orderId, OrderStatus newStatus, CancellationToken cancellationToken);
+        Task UpdateOrderStatusAsync(long orderId, OrderStatus newStatus, CancellationToken cancellationToken);
         Task CancelOrderByAdminAsync(long orderId, CancellationToken cancellationToken);
+        Task<PagedResult<AdminOrderListDto>> GetAllOrdersAsync(AdminOrderQueryParams queryParams, CancellationToken cancellationToken);
+
+        Task<AdminOrderDetailDto> GetOrderById(long orderId, CancellationToken cancellationToken);
     }
 }

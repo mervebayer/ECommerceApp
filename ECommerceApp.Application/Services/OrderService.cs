@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using ECommerceApp.Application.DTOs.Orders;
+using ECommerceApp.Application.DTOs.Orders.Admin;
 using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Extensions;
 using ECommerceApp.Application.Interfaces;
@@ -72,6 +73,47 @@ namespace ECommerceApp.Application.Services
             };
         }
 
+        public async Task<PagedResult<AdminOrderListDto>> GetAllOrdersAsync(AdminOrderQueryParams queryParams, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var statusFilter = queryParams.Status.HasValue && Enum.IsDefined(typeof(OrderStatus), queryParams.Status.Value)
+                ? queryParams.Status
+                : null;
+
+            var totalCount = await _orderRepository.CountAllAsync(statusFilter, queryParams.OrderNumber, queryParams.UserId, queryParams.StartDate, queryParams.EndDate, cancellationToken);
+
+            if (totalCount == 0)
+            {
+                return new PagedResult<AdminOrderListDto>
+                {
+                    Items = Array.Empty<AdminOrderListDto>(),
+                    TotalCount = 0
+                };
+            }
+
+            var orders = await _orderRepository.GetAllOrdersAsync(queryParams.PageNumber, queryParams.PageSize, statusFilter, queryParams.OrderNumber, queryParams.UserId, queryParams.StartDate, queryParams.EndDate, cancellationToken);
+
+            var items = _mapper.Map<List<AdminOrderListDto>>(orders);
+
+            return new PagedResult<AdminOrderListDto>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
+        }
+
+
+        public async Task<AdminOrderDetailDto> GetOrderById(long orderId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var order = await _orderRepository.GetOrderByIdAsync(orderId, cancellationToken)
+                    ?? throw new NotFoundException("Order not found.");
+
+            return _mapper.Map<AdminOrderDetailDto>(order);
+        }
+
         public async Task<OrderDetailDto> GetOrderByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -109,7 +151,7 @@ namespace ECommerceApp.Application.Services
             _logger.LogInformation("Order cancelled by admin. OrderId={OrderId}", orderId);
         }
 
-        public async Task UpdateOrderStatusAsync(string userId, long orderId, OrderStatus newStatus, CancellationToken cancellationToken)
+        public async Task UpdateOrderStatusAsync(long orderId, OrderStatus newStatus, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -162,7 +204,7 @@ namespace ECommerceApp.Application.Services
             _orderRepository.Update(order);
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            _logger.LogInformation("Order status updated successfully. OrderId={OrderId}, UserId={UserId}, NewStatus={NewStatus}", orderId, userId, newStatus);
+            _logger.LogInformation("Order status updated successfully. OrderId={OrderId}, UserId={UserId}, NewStatus={NewStatus}", orderId, newStatus);
         }
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)

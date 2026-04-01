@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Application.DTOs.Orders;
+using ECommerceApp.Application.DTOs.Orders.Admin;
 using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -39,7 +40,6 @@ namespace ECommerceApp.API.Controllers
                 data = result
             });
         }
-
 
         [Authorize]
         [HttpGet]
@@ -84,6 +84,25 @@ namespace ECommerceApp.API.Controllers
         }
 
         [Authorize(Roles = "Admin,StoreManager")]
+        [HttpPatch("{orderId:long}/status")]
+        public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody] UpdateOrderStatusRequestDto request, CancellationToken cancellationToken)
+        {
+
+            await _orderService.UpdateOrderStatusAsync(orderId, request.Status, cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Roles = "Admin,StoreManager")]
+        [HttpGet("admin")]
+        public async Task<ActionResult<IReadOnlyList<AdminOrderListDto>>> GetAllOrdersAsync([FromQuery] AdminOrderQueryParams queryParams, CancellationToken cancellationToken)
+        {
+            var result = await _orderService.GetAllOrdersAsync(queryParams, cancellationToken);
+
+            return Ok(result);
+        }
+
+        [Authorize(Roles = "Admin,StoreManager")]
         [HttpPost("{orderId:long}/admin-cancel")]
         public async Task<IActionResult> CancelOrderAsAdminAsync(long orderId, CancellationToken cancellationToken)
         {
@@ -92,17 +111,14 @@ namespace ECommerceApp.API.Controllers
         }
 
         [Authorize(Roles = "Admin,StoreManager")]
-        [HttpPatch("{orderId:long}/status")]
-        public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody] UpdateOrderStatusRequestDto request, CancellationToken cancellationToken)
+        [HttpGet("admin/{orderId:long}")]
+        public async Task<ActionResult<AdminOrderDetailDto>> GetAdminOrderDetailAsync(long orderId, CancellationToken cancellationToken)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrWhiteSpace(userId))
-                return Unauthorized();
+            var result = await _orderService.GetOrderById(orderId, cancellationToken);
 
-            await _orderService.UpdateOrderStatusAsync(userId, orderId, request.Status, cancellationToken);
-
-            return NoContent();
+            return Ok(result);
         }
+
     }
 }

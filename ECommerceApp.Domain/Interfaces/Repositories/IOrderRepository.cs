@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Domain.Entities;
+using ECommerceApp.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,10 @@ namespace ECommerceApp.Domain.Interfaces.Repositories
         Task<List<Order>> GetExpiredPendingPaymentOrdersAsync(CancellationToken cancellationToken = default);
         Task<Dictionary<long, int>> GetReservedQuantitiesExcludingOrderAsync(IEnumerable<long> productIds, long excludedOrderId, CancellationToken cancellationToken = default);
         Task<Order?> GetOrderByIdWithItemsAsync(long orderId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<Order>> GetAllOrdersAsync(int pageNumber, int pageSize, OrderStatus? status, string? orderNumber, string? userId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default);
+        Task<int> CountAllAsync(OrderStatus? status, string? orderNumber, string? userId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default);
+
+        Task<Order?> GetOrderByIdAsync(long orderId, CancellationToken cancellationToken);
 
     }
 }
