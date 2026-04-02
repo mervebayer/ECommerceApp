@@ -22,6 +22,7 @@ namespace ECommerceApp.Infrastructure.Persistence
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<UserAddress> UserAddresses { get; set; }
+        public DbSet<UserFavorite> UserFavorites { get; set; }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

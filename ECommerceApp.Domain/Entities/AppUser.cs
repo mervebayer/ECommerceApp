@@ -25,5 +25,7 @@ namespace ECommerceApp.Domain.Entities
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiration { get; set; }
         public ICollection<UserAddress> Addresses { get; set; } = new List<UserAddress>();
+        public ICollection<UserFavorite> Favorites { get; set; } = new List<UserFavorite>();
+
     }
 }

@@ -4,6 +4,7 @@ using ECommerceApp.Application.DTOs.Categories;
 using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.Orders.Admin;
 using ECommerceApp.Application.DTOs.Products;
+using ECommerceApp.Application.DTOs.UserFavorites;
 using ECommerceApp.Application.DTOs.UserProfiles;
 using ECommerceApp.Application.DTOs.Users;
 using ECommerceApp.Domain.Entities;
@@ -36,6 +37,17 @@ namespace ECommerceApp.Application.Mappings
             CreateMap<CreateUserAddressDto, UserAddress>();
             CreateMap<UpdateUserAddressDto, UserAddress>();
             CreateMap<AppUser, UserProfileDto>();
+            CreateMap<UserFavorite, FavoriteItemDto>()
+                    .ForCtorParam(nameof(FavoriteItemDto.ProductId), opt => opt.MapFrom(src => src.ProductId))
+                    .ForCtorParam(nameof(FavoriteItemDto.ProductName), opt => opt.MapFrom(src => src.Product.Name))
+                    .ForCtorParam(nameof(FavoriteItemDto.Price), opt => opt.MapFrom(src => src.Product.Price))
+                    .ForCtorParam(nameof(FavoriteItemDto.ImageUrl),
+                                    opt => opt.MapFrom(src =>
+                                        src.Product.Images
+                                            .OrderByDescending(x => x.IsMain)
+                                            .Select(x => x.Url)
+                                            .FirstOrDefault() ?? string.Empty));
+
 
             // NOTE: AutoMapper uses constructor mapping for positional records. 
             // Since OrderListDto is a positional record, use ForCtorParam instead of ForMember.

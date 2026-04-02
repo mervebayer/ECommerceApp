@@ -45,6 +45,7 @@ namespace ECommerceApp.Infrastructure.Extensions.DependencyInjection
             services.AddScoped<IProductReadRepository, ProductReadRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IUserAddressRepository, UserAddressRepository>();
+            services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 
             // Cloudinary
             services.Configure<CloudinaryOptions>(configuration.GetSection("Cloudinary"));

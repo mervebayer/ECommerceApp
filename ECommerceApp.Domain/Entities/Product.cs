@@ -14,5 +14,7 @@ namespace ECommerceApp.Domain.Entities
         public long CategoryId { get; set; }
         public Category Category { get; set; }
         public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
+        public ICollection<UserFavorite> Favorited {get; set; } = new List<UserFavorite>();
+
     }
 }
