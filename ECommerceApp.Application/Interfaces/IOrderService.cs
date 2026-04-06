@@ -14,7 +14,7 @@ namespace ECommerceApp.Application.Interfaces
     public interface IOrderService 
     {
         Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken);
-        Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken);
+        Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, string buyerIp, CreateOrderRequestDto request, CancellationToken cancellationToken);
         Task<OrderDetailDto> GetOrderByIdAndUserIdAsync(string userId, long orderId, CancellationToken cancellationToken);
         Task CancelOrderAsync(string userId, long orderId, CancellationToken cancellationToken);
         Task UpdateOrderStatusAsync(long orderId, OrderStatus newStatus, CancellationToken cancellationToken);

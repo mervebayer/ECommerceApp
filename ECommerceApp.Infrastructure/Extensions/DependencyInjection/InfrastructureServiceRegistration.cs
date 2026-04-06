@@ -7,6 +7,7 @@ using ECommerceApp.Infrastructure.ExternalServices;
 using ECommerceApp.Infrastructure.Interfaces.Repositories;
 using ECommerceApp.Infrastructure.Models;
 using ECommerceApp.Infrastructure.Options;
+using ECommerceApp.Infrastructure.Payments.Iyzico;
 using ECommerceApp.Infrastructure.Persistence;
 using ECommerceApp.Infrastructure.Repositories;
 using ECommerceApp.Infrastructure.Security;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -64,6 +66,17 @@ namespace ECommerceApp.Infrastructure.Extensions.DependencyInjection
 
             services.Configure<CheckoutSettings>(configuration.GetSection("CheckoutSettings"));
             services.AddScoped<ICheckoutSettings>(sp =>sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CheckoutSettings>>().Value);
+
+            services.Configure<IyzicoOptions>(configuration.GetSection(IyzicoOptions.SectionName));
+            services.AddHttpClient<IPaymentGateway, IyzicoPaymentGateway>((serviceProvider, client) =>
+            {
+                var options = serviceProvider
+                    .GetRequiredService<IOptions<IyzicoOptions>>()
+                    .Value;
+
+                client.BaseAddress = new Uri(options.BaseUrl);
+            });
+
 
             return services;
         }

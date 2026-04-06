@@ -32,7 +32,9 @@ namespace ECommerceApp.API.Controllers
             if (string.IsNullOrWhiteSpace(basketId))
                 return BadRequest("Basket not found.");
 
-            var result = await _orderService.CreateOrderAsync(userId, basketId, request, cancellationToken);
+            var buyerIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+            var result = await _orderService.CreateOrderAsync(userId, basketId, buyerIp, request, cancellationToken);
 
             return Ok(new
             {

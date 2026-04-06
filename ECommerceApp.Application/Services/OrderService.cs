@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.Orders.Admin;
+using ECommerceApp.Application.DTOs.Payments;
 using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Extensions;
 using ECommerceApp.Application.Interfaces;
@@ -31,9 +32,10 @@ namespace ECommerceApp.Application.Services
         private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
         private readonly ICheckoutSettings _checkoutSettings;
+        private readonly IPaymentGateway _paymentGateway;
+        private readonly IUserRepository _userRepository;
 
-
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, ICheckoutSettings checkoutSettings)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -45,6 +47,8 @@ namespace ECommerceApp.Application.Services
             _userAddressRepository = userAddressRepository;
             _createOrderValidator = createOrderValidator;
             _checkoutSettings = checkoutSettings;
+            _paymentGateway = paymentGateway;
+            _userRepository = userRepository;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -209,7 +213,7 @@ namespace ECommerceApp.Application.Services
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)
 
-        public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
+        public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, string buyerIp, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             var validationResult = await _createOrderValidator.ValidateAsync(request, cancellationToken);
             validationResult.ThrowIfInvalid();
@@ -233,7 +237,11 @@ namespace ECommerceApp.Application.Services
             var address = await _userAddressRepository.GetByIdAndUserIdAsync(request.UserAddressId, userId, cancellationToken);
             if (address is null)           
                 throw new BusinessRuleException("Address not found.");
-            
+
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user is null)
+                throw new NotFoundException("User not found.");
+
             var productIds = basket.Items.Select(x => x.ProductId).Distinct().ToList();
 
             var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
@@ -289,25 +297,77 @@ namespace ECommerceApp.Application.Services
 
             order.TotalAmount = totalAmount;
 
+
+            var paymentRequest = new ProcessPaymentRequest
+            {
+                ConversationId = order.OrderNumber,
+                BasketId = basketId,
+                Price = order.TotalAmount,
+                PaidPrice = order.TotalAmount,
+                PaymentCard = request.PaymentCard,
+
+                BuyerId = user.Id,
+                BuyerIp = buyerIp,
+                BuyerEmail = user.Email ?? string.Empty,
+                BuyerFirstName = user.FirstName ?? string.Empty,
+                BuyerLastName = user.LastName ?? string.Empty,
+                BuyerPhoneNumber = user.PhoneNumber ?? address.PhoneNumber ?? string.Empty,
+
+                //TODO: update to real tckn
+                BuyerIdentityNumber = "11111111111",
+
+                ShippingContactName = address.ContactName,
+                AddressLine = address.AddressLine,
+                City = address.City,
+                Country = address.Country,
+                ZipCode = address.PostalCode ?? string.Empty,
+
+                Items = order.Items
+                    .SelectMany(item => Enumerable.Range(0, item.Quantity).Select(_ => new PaymentBasketItemDto
+                    {
+                        Id = item.ProductId.ToString(),
+                        Name = item.ProductName,
+                        Category1 = "General",
+                        ItemType = "PHYSICAL",
+                        Price = item.UnitPrice
+                    }))
+                    .ToList()
+            };
+       
+
+
             // TODO: Ensure consistency between order persistence (SQL) and basket deletion (Redis).
             // Consider retry, eventual consistency (background service) or event-driven approach
 
             await _orderRepository.AddAsync(order, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            var basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
-            if (!basketDeleted)
-            {
-                _logger.LogError("Basket deletion failed after order creation. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
-            }
+            var paymentResult = await _paymentGateway.ProcessAsync(paymentRequest, cancellationToken);
 
-            _logger.LogInformation("Basket cleared after checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
+            if (paymentResult.IsSuccess)
+            {
+                await UpdateOrderStatusAsync(order.Id, OrderStatus.Confirmed, cancellationToken);
+                order.Status = OrderStatus.Confirmed;
+                order.ReservationExpiresAt = null;
+
+                var basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
+                if (!basketDeleted)
+                {
+                    _logger.LogError("Basket deletion failed after successful payment. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
+                }
+                else
+                {
+                    _logger.LogInformation("Basket cleared after successful checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
+                }
+            }
 
             return new CreateOrderResponseDto(
                 order.OrderNumber,
                 order.TotalAmount,
                 order.Status.ToString(),
-                order.Items.Count
+                order.Items.Count,
+                    paymentResult.IsSuccess,
+                    paymentResult.IsSuccess ? null : paymentResult.ErrorMessage
             );
         }
         private static bool IsValidStatusTransition(OrderStatus current, OrderStatus next)
