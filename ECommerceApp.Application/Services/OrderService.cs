@@ -313,6 +313,8 @@ namespace ECommerceApp.Application.Services
         }
 
         //TODO: change to 3DS
+        //TODO: add PaymentTransaction entity + idempotency key
+        //TODO: PayOrderRequestDto + Card info validation
         public async Task<PayOrderResponseDto> PayOrderAsync(string userId, long orderId, string buyerIp, PayOrderRequestDto request, CancellationToken cancellationToken)
         {
             var user = await _userRepository.GetByIdAsync(userId, cancellationToken);

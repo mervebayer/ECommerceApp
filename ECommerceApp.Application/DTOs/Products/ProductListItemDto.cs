@@ -6,6 +6,6 @@ using System.Threading.Tasks;
 
 namespace ECommerceApp.Application.DTOs.Products
 {
-    public record ProductListItemDto(long Id, string Name, string CategoryName, string? MainImageUrl, decimal Price);
+    public record ProductListItemDto(long Id, string Name, long CategoryId, string CategoryName, string? MainImageUrl, decimal Price, int Stock);
     
 }

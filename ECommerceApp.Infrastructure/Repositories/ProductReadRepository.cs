@@ -52,13 +52,15 @@ namespace ECommerceApp.Infrastructure.Repositories
                 .Select(x => new ProductListItemDto(
                     x.Id,
                     x.Name,
+                    x.CategoryId,
                     x.Category.Name,
                     x.Images
                         .OrderByDescending(i => i.IsMain)
                         .Select(i => i.Url)
                         .FirstOrDefault()
                         ?? "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg",
-                    x.Price
+                    x.Price,
+                    x.Stock
                 ))
                 .ToListAsync(cancellationToken);
 
