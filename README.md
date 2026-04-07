@@ -35,6 +35,7 @@ ASP.NET Core Web API • EF Core • Identity • JWT • Redis • Serilog • 
 - **Orders**: address-based checkout, shipping address snapshot persistence, order history/detail endpoints
 - **Checkout Flow**: reservation-based order creation with `PendingPayment`, expiration handling, stock confirmation on order approval
 - **User Profile**: profile update and password change support
+- **Favorites**: authenticated user favorites management with add, remove, list, and favorite status checks
 - **Logging & Error Handling**: centralized exception middleware and structured logging
 
 ## Testing
