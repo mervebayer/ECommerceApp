@@ -24,6 +24,8 @@ namespace ECommerceApp.Domain.Entities
         public string ShippingPostalCode { get; set; } = null!;
         public string ShippingAddressLine { get; set; } = null!;
         public DateTime? ReservationExpiresAt { get; set; }
+        //public string BasketId { get; set; } = null!;
+        public string? BasketId { get; set; }
 
 
     }

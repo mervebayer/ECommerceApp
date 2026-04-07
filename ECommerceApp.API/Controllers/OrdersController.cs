@@ -1,5 +1,6 @@
 ﻿using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.Orders.Admin;
+using ECommerceApp.Application.DTOs.Payments;
 using ECommerceApp.Application.DTOs.QueryParams;
 using ECommerceApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -32,9 +33,8 @@ namespace ECommerceApp.API.Controllers
             if (string.IsNullOrWhiteSpace(basketId))
                 return BadRequest("Basket not found.");
 
-            var buyerIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
 
-            var result = await _orderService.CreateOrderAsync(userId, basketId, buyerIp, request, cancellationToken);
+            var result = await _orderService.CreateOrderAsync(userId, basketId, request, cancellationToken);
 
             return Ok(new
             {
@@ -42,6 +42,36 @@ namespace ECommerceApp.API.Controllers
                 data = result
             });
         }
+
+
+        [Authorize]
+        [HttpPost("{orderId:long}/pay")]
+        public async Task<ActionResult<PayOrderResponseDto>> PayOrderAsync(long orderId, [FromBody] PayOrderRequestDto request, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var buyerIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+            var result = await _orderService.PayOrderAsync(userId, orderId, buyerIp, request, cancellationToken);
+
+            if (!result.IsPaymentSuccessful)
+            {
+                return BadRequest(new
+                {
+                    message = result.PaymentErrorMessage ?? "Payment could not be completed.",
+                    data = result
+                });
+            }
+
+            return Ok(new
+            {
+                message = "Your payment has been completed successfully.",
+                data = result
+            });
+        }
+
 
         [Authorize]
         [HttpGet]
@@ -121,6 +151,7 @@ namespace ECommerceApp.API.Controllers
 
             return Ok(result);
         }
+
 
     }
 }

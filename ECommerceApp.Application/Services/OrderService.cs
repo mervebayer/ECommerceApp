@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -213,7 +214,7 @@ namespace ECommerceApp.Application.Services
 
         // TODO: Implement basket merge after login (merge cookie-based basket with user basket)
 
-        public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, string buyerIp, CreateOrderRequestDto request, CancellationToken cancellationToken)
+        public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             var validationResult = await _createOrderValidator.ValidateAsync(request, cancellationToken);
             validationResult.ThrowIfInvalid();
@@ -238,9 +239,7 @@ namespace ECommerceApp.Application.Services
             if (address is null)           
                 throw new BusinessRuleException("Address not found.");
 
-            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
-            if (user is null)
-                throw new NotFoundException("User not found.");
+           
 
             var productIds = basket.Items.Select(x => x.ProductId).Distinct().ToList();
 
@@ -268,7 +267,8 @@ namespace ECommerceApp.Application.Services
                 OrderNumber = _orderNumberGenerator.Generate(),
                 UserId = userId,
                 Status = OrderStatus.PendingPayment,
-                ReservationExpiresAt = DateTime.UtcNow.AddMinutes(_checkoutSettings.ReservationTimeoutMinutes)
+                ReservationExpiresAt = DateTime.UtcNow.AddMinutes(_checkoutSettings.ReservationTimeoutMinutes),
+                BasketId = basketId
             };
 
             ApplyShippingAddress(order, address);
@@ -295,13 +295,51 @@ namespace ECommerceApp.Application.Services
                 totalAmount += lineTotal;
             }
 
-            order.TotalAmount = totalAmount;
+            order.TotalAmount = totalAmount;        
 
+            // TODO: Ensure consistency between order persistence (SQL) and basket deletion (Redis).
+            // Consider retry, eventual consistency (background service) or event-driven approach
+
+            await _orderRepository.AddAsync(order, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            return new CreateOrderResponseDto(
+                order.Id,
+                order.OrderNumber,
+                order.TotalAmount,
+                order.Status.ToString(),
+                order.Items.Count
+            );
+        }
+
+        //TODO: change to 3DS
+        public async Task<PayOrderResponseDto> PayOrderAsync(string userId, long orderId, string buyerIp, PayOrderRequestDto request, CancellationToken cancellationToken)
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user is null)
+                throw new NotFoundException("User not found.");
+
+            var order = await _orderRepository.GetByIdAndUserIdAsync(userId, orderId, cancellationToken);
+            if (order is null)
+                throw new NotFoundException("Order not found.");
+
+            if (order.Status != OrderStatus.PendingPayment)
+                throw new BusinessRuleException("Only pending payment orders can be paid.");
+
+            if (order.ReservationExpiresAt.HasValue && order.ReservationExpiresAt.Value <= DateTime.UtcNow)
+            {
+                order.Status = OrderStatus.Expired;
+                order.ReservationExpiresAt = null;
+                _orderRepository.Update(order);
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                throw new BusinessRuleException("This order payment window has expired.");
+            }
 
             var paymentRequest = new ProcessPaymentRequest
             {
                 ConversationId = order.OrderNumber,
-                BasketId = basketId,
+                BasketId = order.BasketId ?? order.OrderNumber,
                 Price = order.TotalAmount,
                 PaidPrice = order.TotalAmount,
                 PaymentCard = request.PaymentCard,
@@ -311,16 +349,16 @@ namespace ECommerceApp.Application.Services
                 BuyerEmail = user.Email ?? string.Empty,
                 BuyerFirstName = user.FirstName ?? string.Empty,
                 BuyerLastName = user.LastName ?? string.Empty,
-                BuyerPhoneNumber = user.PhoneNumber ?? address.PhoneNumber ?? string.Empty,
+                BuyerPhoneNumber = user.PhoneNumber ?? order.ShippingPhoneNumber ?? string.Empty,
 
                 //TODO: update to real tckn
                 BuyerIdentityNumber = "11111111111",
 
-                ShippingContactName = address.ContactName,
-                AddressLine = address.AddressLine,
-                City = address.City,
-                Country = address.Country,
-                ZipCode = address.PostalCode ?? string.Empty,
+                ShippingContactName = order.ShippingContactName,
+                AddressLine = order.ShippingAddressLine,
+                City = order.ShippingCity,
+                Country = order.ShippingCountry,
+                ZipCode = order.ShippingPostalCode ?? string.Empty,
 
                 Items = order.Items
                     .SelectMany(item => Enumerable.Range(0, item.Quantity).Select(_ => new PaymentBasketItemDto
@@ -333,14 +371,6 @@ namespace ECommerceApp.Application.Services
                     }))
                     .ToList()
             };
-       
-
-
-            // TODO: Ensure consistency between order persistence (SQL) and basket deletion (Redis).
-            // Consider retry, eventual consistency (background service) or event-driven approach
-
-            await _orderRepository.AddAsync(order, cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
 
             var paymentResult = await _paymentGateway.ProcessAsync(paymentRequest, cancellationToken);
 
@@ -350,25 +380,22 @@ namespace ECommerceApp.Application.Services
                 order.Status = OrderStatus.Confirmed;
                 order.ReservationExpiresAt = null;
 
-                var basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
-                if (!basketDeleted)
-                {
-                    _logger.LogError("Basket deletion failed after successful payment. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
+                var basketId = order.BasketId;
+                if(basketId is not null) { 
+                    var basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
+                    if (!basketDeleted)
+                    {
+                        _logger.LogError("Basket deletion failed after successful payment. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Basket cleared after successful checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
+                    }
                 }
-                else
-                {
-                    _logger.LogInformation("Basket cleared after successful checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
-                }
-            }
 
-            return new CreateOrderResponseDto(
-                order.OrderNumber,
-                order.TotalAmount,
-                order.Status.ToString(),
-                order.Items.Count,
-                    paymentResult.IsSuccess,
-                    paymentResult.IsSuccess ? null : paymentResult.ErrorMessage
-            );
+            }
+            return new PayOrderResponseDto(orderId, order.OrderNumber, order.Status.ToString(), paymentResult.IsSuccess, paymentResult.IsSuccess ? null : paymentResult.ErrorMessage);
+
         }
         private static bool IsValidStatusTransition(OrderStatus current, OrderStatus next)
         {
@@ -456,5 +483,6 @@ namespace ECommerceApp.Application.Services
         }
 
 
+     
     }
 }

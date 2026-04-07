@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace ECommerceApp.Application.DTOs.Orders
 {
-    public sealed record CreateOrderResponseDto(string OrderNumber, decimal TotalAmount, string Status, int ItemCount, bool IsPaymentSuccessful, string? PaymentErrorMessage);
+    public sealed record CreateOrderResponseDto(long OrderId, string OrderNumber, decimal TotalAmount, string Status, int ItemCount);
 }

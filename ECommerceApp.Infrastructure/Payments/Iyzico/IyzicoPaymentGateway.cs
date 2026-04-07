@@ -16,6 +16,12 @@ namespace ECommerceApp.Infrastructure.Payments.Iyzico
 {
     public class IyzicoPaymentGateway : IPaymentGateway
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
+
         private readonly HttpClient _httpClient;
         private readonly IyzicoOptions _options;
         private readonly ILogger<IyzicoPaymentGateway> _logger;
@@ -33,7 +39,7 @@ namespace ECommerceApp.Infrastructure.Payments.Iyzico
 
             const string uriPath = "/payment/auth";
 
-            var jsonBody = JsonSerializer.Serialize(iyzicoRequest);
+            var jsonBody = JsonSerializer.Serialize(iyzicoRequest, JsonOptions);
             var rnd = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             var authorization = CreateAuthorizationHeader(uriPath, jsonBody, rnd);
 
@@ -50,11 +56,7 @@ namespace ECommerceApp.Infrastructure.Payments.Iyzico
             {
                 _logger.LogWarning("Iyzico request failed. StatusCode={StatusCode}, Response={ResponseBody}", response.StatusCode, responseBody);
 
-                var failedPayload = JsonSerializer.Deserialize<CreatePaymentResponse>(responseBody,
-                    new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                var failedPayload = JsonSerializer.Deserialize<CreatePaymentResponse>(responseBody, JsonOptions);
 
                 return new PaymentResult
                 {
@@ -67,12 +69,7 @@ namespace ECommerceApp.Infrastructure.Payments.Iyzico
             }
 
 
-            var payload = JsonSerializer.Deserialize<CreatePaymentResponse>(
-                responseBody,
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            var payload = JsonSerializer.Deserialize<CreatePaymentResponse>(responseBody, JsonOptions);
 
             if (payload is null)
             {

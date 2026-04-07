@@ -19,8 +19,8 @@ namespace ECommerceApp.Infrastructure.Payments.Iyzico.Models
         public long SystemTime { get; set; }
         public string ConversationId { get; set; } = string.Empty;
         public string PaymentId { get; set; } = string.Empty;
-        public string Price { get; set; } = string.Empty;
-        public string PaidPrice { get; set; } = string.Empty;
+        public decimal? Price { get; set; }
+        public decimal? PaidPrice { get; set; }
         public string Currency { get; set; } = string.Empty;
         public string BasketId { get; set; } = string.Empty;
         public string ErrorCode { get; set; } = string.Empty;
