@@ -9,6 +9,8 @@ namespace ECommerceApp.Application.DTOs.Payments
     public sealed record PayOrderRequestDto
     {
         public PaymentCardDto PaymentCard { get; init; } = null!;
+        public string IdempotencyKey { get; init; } = null!;
+
     }
 
 }

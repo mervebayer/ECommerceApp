@@ -26,7 +26,7 @@ namespace ECommerceApp.Domain.Entities
         public DateTime? ReservationExpiresAt { get; set; }
         //public string BasketId { get; set; } = null!;
         public string? BasketId { get; set; }
-
+        public ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
 
     }
 }

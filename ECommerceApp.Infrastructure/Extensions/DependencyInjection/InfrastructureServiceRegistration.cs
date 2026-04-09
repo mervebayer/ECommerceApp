@@ -59,6 +59,7 @@ namespace ECommerceApp.Infrastructure.Extensions.DependencyInjection
             services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
             services.AddScoped<IBasketRepository, BasketRepository>();
             services.AddScoped<IBasketService, BasketService>();
+            services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
 
             // JWT settings binding (options)
             services.Configure<JwtSettings>(configuration.GetSection("JWTSettings"));

@@ -29,14 +29,16 @@ namespace ECommerceApp.Application.Services
         private readonly IProductRepository _productRepository;
         private readonly IUserAddressRepository _userAddressRepository;
         private readonly IValidator<CreateOrderRequestDto> _createOrderValidator;
+        private readonly IValidator<PayOrderRequestDto> _payOrderValidator;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<OrderService> _logger;
         private readonly ICheckoutSettings _checkoutSettings;
         private readonly IPaymentGateway _paymentGateway;
         private readonly IUserRepository _userRepository;
+        private readonly IPaymentTransactionRepository _paymentTransactionRepository;
 
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -47,9 +49,11 @@ namespace ECommerceApp.Application.Services
             _orderNumberGenerator = orderNumberGenerator;
             _userAddressRepository = userAddressRepository;
             _createOrderValidator = createOrderValidator;
+            _payOrderValidator = payOrderValidator;
             _checkoutSettings = checkoutSettings;
             _paymentGateway = paymentGateway;
             _userRepository = userRepository;
+            _paymentTransactionRepository = paymentTransactionRepository;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -165,46 +169,23 @@ namespace ECommerceApp.Application.Services
             if (order is null)
                 throw new NotFoundException("Order not found.");
 
-            if (!IsValidStatusTransition(order.Status, newStatus))          
+            if (!IsValidStatusTransition(order.Status, newStatus))
                 throw new BusinessRuleException($"Invalid status transition from {order.Status} to {newStatus}.");
-            
+
             //stock update
             if (order.Status == OrderStatus.PendingPayment && newStatus == OrderStatus.Confirmed)
             {
-                var productIds = order.Items.Select(x => x.ProductId).Distinct().ToList();
-
-                var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
-                var productDictionary = products.ToDictionary(x => x.Id);
-
-                var reservedQuantities = await _orderRepository.GetReservedQuantitiesExcludingOrderAsync(productIds, order.Id, cancellationToken);
-
-                foreach (var item in order.Items)
-                {
-                    if (!productDictionary.TryGetValue(item.ProductId, out var product))
-                        throw new BusinessRuleException($"Product with id {item.ProductId} was not found.");
-
-                    var reservedByOthers = reservedQuantities.GetValueOrDefault(item.ProductId, 0);
-                    var availableStock = product.Stock - reservedByOthers;
-
-                    if (availableStock < item.Quantity)                    
-                        throw new BusinessRuleException($"Insufficient available stock for product '{product.Name}'. Available: {availableStock}, Required: {item.Quantity}.");                   
-                }
-
-                foreach (var item in order.Items)
-                {
-                    var product = productDictionary[item.ProductId];
-                    product.Stock -= item.Quantity;
-                }
-
-                order.ReservationExpiresAt = null;
+                await ApplyConfirmedStatusAsync(order, cancellationToken);
             }
-
-            if (newStatus == OrderStatus.Expired)
+            else
             {
-                order.ReservationExpiresAt = null;
-            }
+                if (newStatus == OrderStatus.Expired)
+                {
+                    order.ReservationExpiresAt = null;
+                }
 
-            order.Status = newStatus;
+                order.Status = newStatus;
+            }
 
             _orderRepository.Update(order);
             await _unitOfWork.CommitAsync(cancellationToken);
@@ -222,24 +203,24 @@ namespace ECommerceApp.Application.Services
             // TODO: Move pending payment expiration cleanup to a background service instead of triggering it during checkout.
             await ExpirePendingPaymentOrdersAsync(cancellationToken);
 
-            if (string.IsNullOrWhiteSpace(userId))           
+            if (string.IsNullOrWhiteSpace(userId))
                 throw new UnauthorizedException("User is not authenticated");
-            
+
 
             if (string.IsNullOrWhiteSpace(basketId))
                 throw new BusinessRuleException("Basket was not found.");
-            
+
 
             var basket = await _basketRepository.GetBasketAsync(basketId);
 
-            if (basket is null || basket.Items.Count == 0)            
+            if (basket is null || basket.Items.Count == 0)
                 throw new BusinessRuleException("Basket is empty.");
-           
+
             var address = await _userAddressRepository.GetByIdAndUserIdAsync(request.UserAddressId, userId, cancellationToken);
-            if (address is null)           
+            if (address is null)
                 throw new BusinessRuleException("Address not found.");
 
-           
+
 
             var productIds = basket.Items.Select(x => x.ProductId).Distinct().ToList();
 
@@ -295,7 +276,7 @@ namespace ECommerceApp.Application.Services
                 totalAmount += lineTotal;
             }
 
-            order.TotalAmount = totalAmount;        
+            order.TotalAmount = totalAmount;
 
             // TODO: Ensure consistency between order persistence (SQL) and basket deletion (Redis).
             // Consider retry, eventual consistency (background service) or event-driven approach
@@ -313,10 +294,11 @@ namespace ECommerceApp.Application.Services
         }
 
         //TODO: change to 3DS
-        //TODO: add PaymentTransaction entity + idempotency key
-        //TODO: PayOrderRequestDto + Card info validation
         public async Task<PayOrderResponseDto> PayOrderAsync(string userId, long orderId, string buyerIp, PayOrderRequestDto request, CancellationToken cancellationToken)
         {
+            var validationResult = await _payOrderValidator.ValidateAsync(request, cancellationToken);
+            validationResult.ThrowIfInvalid();
+
             var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
             if (user is null)
                 throw new NotFoundException("User not found.");
@@ -328,6 +310,35 @@ namespace ECommerceApp.Application.Services
             if (order.Status != OrderStatus.PendingPayment)
                 throw new BusinessRuleException("Only pending payment orders can be paid.");
 
+            var activeThreshold = DateTime.UtcNow.AddMinutes(-5);
+
+            var expiredPendingTransactions = await _paymentTransactionRepository.GetExpiredPendingTransactionsAsync(order.Id, activeThreshold, cancellationToken);
+
+            if (expiredPendingTransactions.Any())
+            {
+                foreach (var expiredTransaction in expiredPendingTransactions)
+                {
+                    expiredTransaction.Status = PaymentTransactionStatus.Expired;
+                    _paymentTransactionRepository.Update(expiredTransaction);
+                }
+
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
+
+            var idempotentResponse = await GetIdempotentPaymentResponseAsync(order, request.IdempotencyKey, cancellationToken);
+
+            if (idempotentResponse is not null)
+                return idempotentResponse;
+
+
+            var hasSuccessfulTransaction = await _paymentTransactionRepository.HasSuccessfulTransactionAsync(order.Id, cancellationToken);
+            if (hasSuccessfulTransaction)
+                throw new BusinessRuleException("This order has already been paid.");
+
+            var hasPendingTransaction = await _paymentTransactionRepository.HasPendingTransactionAsync(order.Id, activeThreshold, cancellationToken);
+            if (hasPendingTransaction)
+                throw new BusinessRuleException("A payment transaction is already in progress for this order.");
+
             if (order.ReservationExpiresAt.HasValue && order.ReservationExpiresAt.Value <= DateTime.UtcNow)
             {
                 order.Status = OrderStatus.Expired;
@@ -337,6 +348,17 @@ namespace ECommerceApp.Application.Services
 
                 throw new BusinessRuleException("This order payment window has expired.");
             }
+
+            var transaction = new PaymentTransaction
+            {
+                OrderId = order.Id,
+                Status = PaymentTransactionStatus.Pending,
+                ConversationId = order.OrderNumber,
+                IdempotencyKey = request.IdempotencyKey
+            };
+
+            await _paymentTransactionRepository.AddAsync(transaction, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
 
             var paymentRequest = new ProcessPaymentRequest
             {
@@ -363,27 +385,63 @@ namespace ECommerceApp.Application.Services
                 ZipCode = order.ShippingPostalCode ?? string.Empty,
 
                 Items = order.Items
-                    .SelectMany(item => Enumerable.Range(0, item.Quantity).Select(_ => new PaymentBasketItemDto
-                    {
-                        Id = item.ProductId.ToString(),
-                        Name = item.ProductName,
-                        Category1 = "General",
-                        ItemType = "PHYSICAL",
-                        Price = item.UnitPrice
-                    }))
-                    .ToList()
+                        .SelectMany(item => Enumerable.Range(0, item.Quantity).Select(_ => new PaymentBasketItemDto
+                        {
+                            Id = item.ProductId.ToString(),
+                            Name = item.ProductName,
+                            Category1 = "General",
+                            ItemType = "PHYSICAL",
+                            Price = item.UnitPrice
+                        }))
+                        .ToList()
             };
+            PaymentResult paymentResult;
 
-            var paymentResult = await _paymentGateway.ProcessAsync(paymentRequest, cancellationToken);
+            try
+            {
+
+                paymentResult = await _paymentGateway.ProcessAsync(paymentRequest, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+
+                transaction.Status = PaymentTransactionStatus.Failed;
+                transaction.ErrorMessage = ex.Message;
+                _paymentTransactionRepository.Update(transaction);
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                _logger.LogError(ex, "Payment processing failed with exception. OrderId={OrderId}", order.Id);
+                throw;
+            }
 
             if (paymentResult.IsSuccess)
             {
-                await UpdateOrderStatusAsync(order.Id, OrderStatus.Confirmed, cancellationToken);
-                order.Status = OrderStatus.Confirmed;
-                order.ReservationExpiresAt = null;
+                transaction.Status = PaymentTransactionStatus.Succeeded;
+                transaction.ProviderPaymentId = paymentResult.PaymentId;
+                transaction.ErrorCode = null;
+                transaction.ErrorMessage = null;
+                _paymentTransactionRepository.Update(transaction);
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                try
+                {
+                    await ApplyConfirmedStatusAsync(order, cancellationToken);
+                    _orderRepository.Update(order);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    transaction.ErrorMessage = $"Payment succeeded but order confirmation failed: {ex.Message}";
+                    _paymentTransactionRepository.Update(transaction);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    _logger.LogError(ex,"Payment succeeded but order confirmation failed. OrderId={OrderId}, PaymentTransactionId={PaymentTransactionId}", order.Id, transaction.Id);
+                    throw;
+                }
 
                 var basketId = order.BasketId;
-                if(basketId is not null) { 
+                if (basketId is not null)
+                {
                     var basketDeleted = await _basketRepository.DeleteBasketAsync(basketId);
                     if (!basketDeleted)
                     {
@@ -396,9 +454,22 @@ namespace ECommerceApp.Application.Services
                 }
 
             }
-            return new PayOrderResponseDto(orderId, order.OrderNumber, order.Status.ToString(), paymentResult.IsSuccess, paymentResult.IsSuccess ? null : paymentResult.ErrorMessage);
+            else
+            {
 
+                transaction.Status = PaymentTransactionStatus.Failed;
+                transaction.ProviderPaymentId = paymentResult.PaymentId;
+                transaction.ErrorCode = paymentResult.ErrorCode;
+                transaction.ErrorMessage = paymentResult.ErrorMessage;
+                _paymentTransactionRepository.Update(transaction);
+
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
+
+            return new PayOrderResponseDto(orderId, order.OrderNumber, order.Status.ToString(), paymentResult.IsSuccess, paymentResult.IsSuccess ? null : paymentResult.ErrorMessage);
         }
+
+
         private static bool IsValidStatusTransition(OrderStatus current, OrderStatus next)
         {
             switch (current)
@@ -484,7 +555,69 @@ namespace ECommerceApp.Application.Services
             order.ReservationExpiresAt = null;
         }
 
+        private async Task ApplyConfirmedStatusAsync(Order order, CancellationToken cancellationToken)
+        {
+            var productIds = order.Items.Select(x => x.ProductId).Distinct().ToList();
 
-     
+            var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
+            var productDictionary = products.ToDictionary(x => x.Id);
+
+            var reservedQuantities = await _orderRepository.GetReservedQuantitiesExcludingOrderAsync(productIds, order.Id, cancellationToken);
+
+            foreach (var item in order.Items)
+            {
+                if (!productDictionary.TryGetValue(item.ProductId, out var product))
+                    throw new BusinessRuleException($"Product with id {item.ProductId} was not found.");
+
+                var reservedByOthers = reservedQuantities.GetValueOrDefault(item.ProductId, 0);
+                var availableStock = product.Stock - reservedByOthers;
+
+                if (availableStock < item.Quantity)
+                    throw new BusinessRuleException($"Insufficient available stock for product '{product.Name}'. Available: {availableStock}, Required: {item.Quantity}.");
+            }
+
+            foreach (var item in order.Items)
+            {
+                var product = productDictionary[item.ProductId];
+                product.Stock -= item.Quantity;
+            }
+
+            order.ReservationExpiresAt = null;
+            order.Status = OrderStatus.Confirmed;
+        }
+
+        private async Task<PayOrderResponseDto?> GetIdempotentPaymentResponseAsync(Order order, string idempotencyKey, CancellationToken cancellationToken)
+        {
+            var existingTransaction = await _paymentTransactionRepository.GetByOrderIdAndIdempotencyKeyAsync(order.Id, idempotencyKey, cancellationToken);
+
+            if (existingTransaction is null)
+                return null;
+
+            return existingTransaction.Status switch
+            {
+                PaymentTransactionStatus.Succeeded => new PayOrderResponseDto(
+                    order.Id,
+                    order.OrderNumber,
+                    order.Status.ToString(),
+                    true,
+                    null),
+
+                PaymentTransactionStatus.Failed => new PayOrderResponseDto(
+                    order.Id,
+                    order.OrderNumber,
+                    order.Status.ToString(),
+                    false,
+                    existingTransaction.ErrorMessage),
+
+                PaymentTransactionStatus.Pending => throw new BusinessRuleException(
+                    "This payment request is already being processed."),
+
+                PaymentTransactionStatus.Expired => throw new BusinessRuleException(
+                    "This payment request has expired. Please retry with a new idempotency key."),
+
+                _ => throw new BusinessRuleException("Payment transaction state is invalid.")
+            };
+        }
+
     }
 }
