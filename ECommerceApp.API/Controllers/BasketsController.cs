@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Application.DTOs.Baskets;
+using ECommerceApp.API.Services;
+using ECommerceApp.Application.DTOs.Baskets;
 using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -10,70 +11,44 @@ namespace ECommerceApp.API.Controllers
     public class BasketsController : ControllerBase
     {
         private readonly IBasketService _basketService;
+        private readonly IBasketIdentityService _basketIdentityService;
 
-        public BasketsController(IBasketService basketService)
+        public BasketsController(IBasketService basketService, IBasketIdentityService basketIdentityService)
         {
             _basketService = basketService;
+            _basketIdentityService = basketIdentityService;
         }
+
         [HttpGet]
-        public async Task<ActionResult<CustomerBasket>> GetBasketById()
+        public async Task<ActionResult<CustomerBasket>> GetBasketById(CancellationToken cancellationToken)
         {
-            var basketId = GetOrCreateBasketId();
+            var basketId = await _basketIdentityService.GetOrCreateBasketIdAsync(cancellationToken);
             var basket = await _basketService.GetOrCreateBasketAsync(basketId);
             return Ok(basket);
         }
+
         [HttpPost("items")]
-        public async Task<ActionResult<CustomerBasket>> AddOrIncrementItem([FromBody] BasketItemUpsertDto dto)
+        public async Task<ActionResult<CustomerBasket>> AddOrIncrementItem([FromBody] BasketItemUpsertDto dto, CancellationToken cancellationToken)
         {
-            var basketId = GetOrCreateBasketId();
+            var basketId = await _basketIdentityService.GetOrCreateBasketIdAsync(cancellationToken);
             var basket = await _basketService.AddItemAsync(basketId, dto.ProductId, dto.Quantity);
             return Ok(basket);
         }
 
-        //[HttpPost]
-        //public async Task<ActionResult<CustomerBasket>> UpdateBasket(CustomerBasket basket)
-        //{
-        //    var basketId = GetOrCreateBasketId();
-        //    basket.Id = basketId;
-        //    var updatedBasket = await _basketService.UpdateBasketAsync(basket);
-
-        //    if (updatedBasket == null)
-        //        return BadRequest("An error occurred while updating the basket.");
-
-        //    return Ok(updatedBasket);
-        //}
-
         [HttpPost("items/{productId:long}/decrease")]
-        public async Task<IActionResult> DecreaseItem(long productId, [FromQuery] int quantity = 1)
+        public async Task<IActionResult> DecreaseItem(long productId, [FromQuery] int quantity = 1, CancellationToken cancellationToken = default)
         {
-            var basketId = GetOrCreateBasketId();
+            var basketId = await _basketIdentityService.GetOrCreateBasketIdAsync(cancellationToken);
             await _basketService.DecreaseItemAsync(basketId, productId, quantity);
             return NoContent();
         }
 
         [HttpDelete("items/{productId:long}")]
-        public async Task<IActionResult> RemoveItem(long productId)
+        public async Task<IActionResult> RemoveItem(long productId, CancellationToken cancellationToken)
         {
-            var basketId = GetOrCreateBasketId();
+            var basketId = await _basketIdentityService.GetOrCreateBasketIdAsync(cancellationToken);
             await _basketService.RemoveItemAsync(basketId, productId);
             return NoContent();
-        }
-        private string GetOrCreateBasketId()
-        {
-            var basketId = Request.Cookies["basketId"];
-            if (string.IsNullOrEmpty(basketId))
-            {
-                basketId = Guid.NewGuid().ToString();
-                var cookieOptions = new CookieOptions
-                {
-                    Expires = DateTime.Now.AddDays(30),
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Lax
-                };
-                Response.Cookies.Append("basketId", basketId, cookieOptions);
-            }
-            return basketId;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using ECommerceApp.Application.DTOs.Orders;
+using ECommerceApp.API.Services;
+using ECommerceApp.Application.DTOs.Orders;
 using ECommerceApp.Application.DTOs.Orders.Admin;
 using ECommerceApp.Application.DTOs.Payments;
 using ECommerceApp.Application.DTOs.QueryParams;
@@ -14,10 +15,12 @@ namespace ECommerceApp.API.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
+        private readonly IBasketIdentityService _basketIdentityService;
 
-        public OrdersController(IOrderService orderService)
+        public OrdersController(IOrderService orderService, IBasketIdentityService basketIdentityService)
         {
             _orderService = orderService;
+            _basketIdentityService = basketIdentityService;
         }
 
         [Authorize]
@@ -25,15 +28,11 @@ namespace ECommerceApp.API.Controllers
         public async Task<ActionResult<CreateOrderResponseDto>> CreateOrderAsync([FromBody] CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var basketId = Request.Cookies["basketId"];
 
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
-            if (string.IsNullOrWhiteSpace(basketId))
-                return BadRequest("Basket not found.");
-
-
+            var basketId = await _basketIdentityService.GetOrCreateBasketIdAsync(cancellationToken);
             var result = await _orderService.CreateOrderAsync(userId, basketId, request, cancellationToken);
 
             return Ok(new
@@ -42,7 +41,6 @@ namespace ECommerceApp.API.Controllers
                 data = result
             });
         }
-
 
         [Authorize]
         [HttpPost("{orderId:long}/pay")]
@@ -71,7 +69,6 @@ namespace ECommerceApp.API.Controllers
                 data = result
             });
         }
-
 
         [Authorize]
         [HttpGet]
@@ -119,7 +116,6 @@ namespace ECommerceApp.API.Controllers
         [HttpPatch("{orderId:long}/status")]
         public async Task<IActionResult> UpdateOrderStatus(long orderId, [FromBody] UpdateOrderStatusRequestDto request, CancellationToken cancellationToken)
         {
-
             await _orderService.UpdateOrderStatusAsync(orderId, request.Status, cancellationToken);
 
             return NoContent();
@@ -146,12 +142,9 @@ namespace ECommerceApp.API.Controllers
         [HttpGet("admin/{orderId:long}")]
         public async Task<ActionResult<AdminOrderDetailDto>> GetAdminOrderDetailAsync(long orderId, CancellationToken cancellationToken)
         {
-
             var result = await _orderService.GetOrderById(orderId, cancellationToken);
 
             return Ok(result);
         }
-
-
     }
 }

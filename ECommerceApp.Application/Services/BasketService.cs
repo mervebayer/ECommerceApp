@@ -25,6 +25,43 @@ namespace ECommerceApp.Application.Services
             var basket = await _basketRepository.GetBasketAsync(basketId);
             return basket ?? new CustomerBasket(basketId);
         }
+
+        public async Task MergeBasketsAsync(string sourceBasketId, string targetBasketId)
+        {
+            if (string.IsNullOrWhiteSpace(sourceBasketId) || string.IsNullOrWhiteSpace(targetBasketId))
+                return;
+
+            if (sourceBasketId == targetBasketId)
+                return;
+
+            var sourceBasket = await _basketRepository.GetBasketAsync(sourceBasketId);
+            if (sourceBasket == null || !sourceBasket.Items.Any())
+                return;
+
+            var targetBasket = await _basketRepository.GetBasketAsync(targetBasketId) ?? new CustomerBasket(targetBasketId);
+
+            foreach (var sourceItem in sourceBasket.Items)
+            {
+                var targetItem = targetBasket.Items.FirstOrDefault(x => x.ProductId == sourceItem.ProductId);
+
+                if (targetItem == null)
+                {
+                    targetBasket.Items.Add(sourceItem);
+                    continue;
+                }
+
+                targetItem.Quantity += sourceItem.Quantity;
+                targetItem.ProductName = sourceItem.ProductName;
+                targetItem.Price = sourceItem.Price;
+                targetItem.ImageUrl = sourceItem.ImageUrl;
+            }
+
+            await _basketRepository.UpdateBasketAsync(targetBasket);
+            await _basketRepository.DeleteBasketAsync(sourceBasketId);
+        }
+
+
+
         public async Task<CustomerBasket> AddItemAsync(string basketId, long productId, int quantity)
         {
             if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));

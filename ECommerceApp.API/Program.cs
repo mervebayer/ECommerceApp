@@ -1,4 +1,5 @@
 using ECommerceApp.API.Middlewares;
+using ECommerceApp.API.Services;
 using ECommerceApp.Application.Extensions.DependencyInjection;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Infrastructure.Extensions.DependencyInjection;
@@ -57,6 +58,8 @@ try
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<IBasketIdentityService, BasketIdentityService>();
 
     var jwtSettings = builder.Configuration.GetSection("JWTSettings").Get<JwtSettings>();
     var secretKey = Encoding.UTF8.GetBytes(jwtSettings.SecurityKey);
@@ -100,10 +103,13 @@ try
     }
 
     app.UseHttpsRedirection();
+    //app.UseDefaultFiles();
+    //app.UseStaticFiles();
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    //app.MapFallbackToFile("index.html");
 
     using (var scope = app.Services.CreateAsyncScope())
     {

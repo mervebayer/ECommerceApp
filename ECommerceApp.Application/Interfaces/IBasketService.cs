@@ -15,5 +15,7 @@ namespace ECommerceApp.Application.Interfaces
         Task<CustomerBasket> AddItemAsync(string basketId, long productId, int quantity);
         Task RemoveItemAsync(string basketId, long productId);
         Task DecreaseItemAsync(string basketId, long productId, int quantity = 1);
+        Task MergeBasketsAsync(string sourceBasketId, string targetBasketId);
+
     }
 }

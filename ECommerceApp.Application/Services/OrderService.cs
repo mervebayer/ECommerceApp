@@ -193,8 +193,6 @@ namespace ECommerceApp.Application.Services
             _logger.LogInformation("Order status updated successfully. OrderId={OrderId}, UserId={UserId}, NewStatus={NewStatus}", orderId, newStatus);
         }
 
-        // TODO: Implement basket merge after login (merge cookie-based basket with user basket)
-
         public async Task<CreateOrderResponseDto> CreateOrderAsync(string userId, string basketId, CreateOrderRequestDto request, CancellationToken cancellationToken)
         {
             var validationResult = await _createOrderValidator.ValidateAsync(request, cancellationToken);
