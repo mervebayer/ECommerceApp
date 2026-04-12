@@ -27,6 +27,7 @@ namespace ECommerceApp.Application.Services
         private readonly IOrderRepository _orderRepository;
         private readonly IBasketRepository _basketRepository;
         private readonly IProductRepository _productRepository;
+        private readonly INotificationRepository _notificationRepository;
         private readonly IUserAddressRepository _userAddressRepository;
         private readonly IValidator<CreateOrderRequestDto> _createOrderValidator;
         private readonly IValidator<PayOrderRequestDto> _payOrderValidator;
@@ -38,7 +39,7 @@ namespace ECommerceApp.Application.Services
         private readonly IUserRepository _userRepository;
         private readonly IPaymentTransactionRepository _paymentTransactionRepository;
 
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository, INotificationRepository notificationRepository)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -54,6 +55,7 @@ namespace ECommerceApp.Application.Services
             _paymentGateway = paymentGateway;
             _userRepository = userRepository;
             _paymentTransactionRepository = paymentTransactionRepository;
+            _notificationRepository = notificationRepository;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -155,6 +157,19 @@ namespace ECommerceApp.Application.Services
                 ?? throw new NotFoundException("Order not found.");
 
             await CancelOrderInternalAsync(order, cancellationToken);
+
+            var notification = new Notification
+            {
+                Title = "Siparişiniz iptal edildi",
+                Message = $"{order.OrderNumber} numaralı siparişiniz iptal edildi.",
+                Type = NotificationType.OrderCancelled,
+                ReceiverUserId = order.UserId,
+                OrderId = order.Id,
+                Link = $"/orders/{order.Id}"
+            };
+
+            await _notificationRepository.AddAsync(notification, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
 
             _logger.LogInformation("Order cancelled by admin. OrderId={OrderId}", orderId);
@@ -188,6 +203,19 @@ namespace ECommerceApp.Application.Services
             }
 
             _orderRepository.Update(order);
+
+            var notification = new Notification
+            {
+                Title = "Sipariş durumu güncellendi",
+                Message = $"{order.OrderNumber} numaralı siparişinizin durumu {newStatus} olarak güncellendi.",
+                Type = NotificationType.OrderStatusChanged,
+                ReceiverUserId = order.UserId,
+                OrderId = order.Id,
+                Link = $"/orders/{order.Id}"
+            };
+
+            await _notificationRepository.AddAsync(notification, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
 
             _logger.LogInformation("Order status updated successfully. OrderId={OrderId}, UserId={UserId}, NewStatus={NewStatus}", orderId, newStatus);
@@ -289,6 +317,7 @@ namespace ECommerceApp.Application.Services
                 order.Status.ToString(),
                 order.Items.Count
             );
+
         }
 
         //TODO: change to 3DS
@@ -450,6 +479,30 @@ namespace ECommerceApp.Application.Services
                         _logger.LogInformation("Basket cleared after successful checkout. BasketId={BasketId}, OrderId={OrderId}", basketId, order.Id);
                     }
                 }
+
+                var adminNotification = new Notification
+                {
+                    Title = "Yeni sipariş geldi",
+                    Message = $"{order.OrderNumber} numaralı siparişin ödemesi tamamlandı.",
+                    Type = NotificationType.OrderCreated,
+                    ReceiverRole = "Admin",
+                    OrderId = order.Id,
+                    Link = $"/admin/orders/{order.Id}"
+                };
+
+                var userNotification = new Notification
+                {
+                    Title = "Sipariş oluştu",
+                    Message = $"{order.OrderNumber} numaralı siparişiniz başarıyla oluşturuldu.",
+                    Type = NotificationType.PaymentReceived,
+                    ReceiverUserId = order.UserId,
+                    OrderId = order.Id,
+                    Link = $"/orders/{order.Id}"
+                };
+
+                await _notificationRepository.AddAsync(adminNotification, cancellationToken);
+                await _notificationRepository.AddAsync(userNotification, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
             }
             else
