@@ -27,8 +27,8 @@ namespace ECommerceApp.Infrastructure.Persistence.Configurations
             builder.Property(x => x.ReceiverUserId)
                 .HasMaxLength(450);
 
-            builder.Property(x => x.ReceiverRole)
-                .HasMaxLength(100);
+            builder.Property(x => x.Audience)
+                .HasConversion<int>();
 
             builder.HasOne(x => x.Order)
                 .WithMany()

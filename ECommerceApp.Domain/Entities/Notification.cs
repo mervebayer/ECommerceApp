@@ -12,10 +12,10 @@ namespace ECommerceApp.Domain.Entities
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public NotificationType Type { get; set; }
+        public NotificationAudience Audience { get; set; }
         public bool IsRead { get; set; } = false;
         public DateTime? ReadDate { get; set; }
         public string? ReceiverUserId { get; set; }
-        public string? ReceiverRole { get; set; }
         public string? Link { get; set; }
         public long? OrderId { get; set; }
 

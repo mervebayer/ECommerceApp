@@ -11,10 +11,10 @@ namespace ECommerceApp.Application.Interfaces
     public interface INotificationService
     {
         Task<PagedResult<NotificationDto>> GetMyNotificationsAsync(string userId, NotificationQueryParams queryParams, CancellationToken cancellationToken); 
-        Task<PagedResult<NotificationDto>> GetRoleNotificationsAsync(string role, NotificationQueryParams queryParams, CancellationToken cancellationToken);
+        Task<PagedResult<NotificationDto>> GetStaffNotificationsAsync(string userId, NotificationQueryParams queryParams, CancellationToken cancellationToken);
         Task<int> GetUnreadCountForUserAsync(string userId, CancellationToken cancellationToken); 
-        Task<int> GetUnreadCountForRoleAsync(string role, CancellationToken cancellationToken); 
+        Task<int> GetUnreadCountForStaffAsync(string userId, CancellationToken cancellationToken); 
         Task MarkAsReadForUserAsync(long notificationId, string userId, CancellationToken cancellationToken); 
-        Task MarkAsReadForRoleAsync(long notificationId, string role, CancellationToken cancellationToken);
+        Task MarkAsReadForStaffAsync(long notificationId, string userId, CancellationToken cancellationToken);
     }
 }

@@ -147,6 +147,9 @@ namespace ECommerceApp.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Audience")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
@@ -170,10 +173,6 @@ namespace ECommerceApp.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ReadDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("ReceiverRole")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("ReceiverUserId")
                         .HasMaxLength(450)

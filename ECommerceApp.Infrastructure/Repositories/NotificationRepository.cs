@@ -1,4 +1,5 @@
 ﻿using ECommerceApp.Domain.Entities;
+using ECommerceApp.Domain.Enums;
 using ECommerceApp.Domain.Interfaces.Repositories;
 using ECommerceApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -21,16 +22,16 @@ namespace ECommerceApp.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<Notification>> GetUserNotificationsAsync(string userId, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.AsNoTracking().Where(x => x.ReceiverUserId == userId)
+            return await _context.Notifications.AsNoTracking().Where(x => x.ReceiverUserId == userId && x.Audience == NotificationAudience.Customer)
                 .OrderByDescending(x => x.CreatedDate)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Notification>> GetRoleNotificationsAsync(string role, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Notification>> GetStaffNotificationsAsync(string userId, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.AsNoTracking().Where(x => x.ReceiverRole == role)
+            return await _context.Notifications.AsNoTracking().Where(x => x.ReceiverUserId == userId && x.Audience == NotificationAudience.Backoffice)
                 .OrderByDescending(x => x.CreatedDate)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -39,31 +40,31 @@ namespace ECommerceApp.Infrastructure.Repositories
 
         public async Task<int> GetUnreadCountForUserAsync(string userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverUserId == userId && !x.IsRead, cancellationToken);
+            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverUserId == userId && x.Audience == NotificationAudience.Customer && !x.IsRead, cancellationToken);
         }
 
-        public async Task<int> GetUnreadCountForRoleAsync(string role, CancellationToken cancellationToken = default)
+        public async Task<int> GetUnreadCountForStaffAsync(string userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverRole == role && !x.IsRead, cancellationToken);
+            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverUserId == userId && x.Audience == NotificationAudience.Backoffice && !x.IsRead, cancellationToken);
         }
 
         public async Task<Notification?> GetByIdForUserAsync(long notificationId, string userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.SingleOrDefaultAsync(x => x.Id == notificationId && x.ReceiverUserId == userId, cancellationToken);
+            return await _context.Notifications.SingleOrDefaultAsync(x => x.Id == notificationId && x.ReceiverUserId == userId && x.Audience == NotificationAudience.Customer, cancellationToken);
         }
 
-        public async Task<Notification?> GetByIdForRoleAsync(long notificationId, string role, CancellationToken cancellationToken = default)
+        public async Task<Notification?> GetByIdForStaffAsync(long notificationId, string userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.SingleOrDefaultAsync(x => x.Id == notificationId && x.ReceiverRole == role, cancellationToken);
+            return await _context.Notifications.SingleOrDefaultAsync(x => x.Id == notificationId && x.ReceiverUserId == userId && x.Audience == NotificationAudience.Backoffice, cancellationToken);
         }
 
         public async Task<int> CountForUserAsync(string userId, CancellationToken cancellationToken = default) 
         { 
-            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverUserId == userId, cancellationToken); 
+            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverUserId == userId && x.Audience == NotificationAudience.Customer, cancellationToken); 
         }
-        public async Task<int> CountForRoleAsync(string role, CancellationToken cancellationToken = default) 
+        public async Task<int> CountForStaffAsync(string userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverRole == role, cancellationToken); 
+            return await _context.Notifications.AsNoTracking().CountAsync(x => x.ReceiverUserId == userId && x.Audience == NotificationAudience.Backoffice, cancellationToken);
         }
     }
 }

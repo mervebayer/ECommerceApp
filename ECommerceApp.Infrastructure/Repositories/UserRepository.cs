@@ -114,6 +114,24 @@ namespace ECommerceApp.Infrastructure.Repositories
                 );
         }
 
+        public async Task<IReadOnlyList<AppUser>> GetUsersInRolesAsync(IEnumerable<string> roleNames, CancellationToken cancellationToken)
+        {
+            var roles = roleNames.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            if (roles.Count == 0)
+                return Array.Empty<AppUser>();
+
+            return await (
+                from user in _context.Users.AsNoTracking()
+                join userRole in _context.UserRoles on user.Id equals userRole.UserId
+                join role in _context.Roles on userRole.RoleId equals role.Id
+                where role.Name != null && roles.Contains(role.Name)
+                select user)
+                .Distinct()
+                .OrderBy(x => x.UserName)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<IReadOnlyList<AppUser>> GetPagedListAsync(int pageSize, int pageNumber, CancellationToken cancellationToken)
         {
             IQueryable<AppUser> query = _context.Users

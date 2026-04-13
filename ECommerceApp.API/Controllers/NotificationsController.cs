@@ -58,28 +58,43 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpGet("admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,StoreManager")]
     public async Task<IActionResult> GetAdminNotifications([FromQuery] NotificationQueryParams queryParams, CancellationToken cancellationToken = default)
     {
-        var result = await _notificationService.GetRoleNotificationsAsync("Admin", queryParams, cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var result = await _notificationService.GetStaffNotificationsAsync(userId, queryParams, cancellationToken);
 
         return Ok(result);
     }
 
     [HttpGet("admin/unread-count")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,StoreManager")]
     public async Task<IActionResult> GetAdminUnreadCount(CancellationToken cancellationToken)
     {
-        var count = await _notificationService.GetUnreadCountForRoleAsync("Admin", cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var count = await _notificationService.GetUnreadCountForStaffAsync(userId, cancellationToken);
 
         return Ok(new { count });
     }
 
     [HttpPatch("admin/{id:long}/read")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,StoreManager")]
     public async Task<IActionResult> MarkAdminNotificationAsRead(long id, CancellationToken cancellationToken)
     {
-        await _notificationService.MarkAsReadForRoleAsync(id, "Admin", cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        await _notificationService.MarkAsReadForStaffAsync(id, userId, cancellationToken);
 
         return NoContent();
     }

@@ -163,12 +163,20 @@ namespace ECommerceApp.Application.Services
                 Title = "Siparişiniz iptal edildi",
                 Message = $"{order.OrderNumber} numaralı siparişiniz iptal edildi.",
                 Type = NotificationType.OrderCancelled,
+                Audience = NotificationAudience.Customer,
                 ReceiverUserId = order.UserId,
                 OrderId = order.Id,
                 Link = $"/orders/{order.Id}"
             };
 
             await _notificationRepository.AddAsync(notification, cancellationToken);
+            await CreateStaffNotificationsAsync(
+                "Sipariş iptal edildi",
+                $"{order.OrderNumber} numaralı sipariş yönetici tarafından iptal edildi.",
+                NotificationType.OrderCancelled,
+                order.Id,
+                $"/admin/orders/{order.Id}",
+                cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);
 
@@ -209,12 +217,20 @@ namespace ECommerceApp.Application.Services
                 Title = "Sipariş durumu güncellendi",
                 Message = $"{order.OrderNumber} numaralı siparişinizin durumu {newStatus} olarak güncellendi.",
                 Type = NotificationType.OrderStatusChanged,
+                Audience = NotificationAudience.Customer,
                 ReceiverUserId = order.UserId,
                 OrderId = order.Id,
                 Link = $"/orders/{order.Id}"
             };
 
             await _notificationRepository.AddAsync(notification, cancellationToken);
+            await CreateStaffNotificationsAsync(
+                "Sipariş durumu güncellendi",
+                $"{order.OrderNumber} numaralı siparişin durumu {newStatus} olarak güncellendi.",
+                NotificationType.OrderStatusChanged,
+                order.Id,
+                $"/admin/orders/{order.Id}",
+                cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);
 
@@ -480,28 +496,25 @@ namespace ECommerceApp.Application.Services
                     }
                 }
 
-                var adminNotification = new Notification
-                {
-                    Title = "Yeni sipariş geldi",
-                    Message = $"{order.OrderNumber} numaralı siparişin ödemesi tamamlandı.",
-                    Type = NotificationType.OrderCreated,
-                    ReceiverRole = "Admin",
-                    OrderId = order.Id,
-                    Link = $"/admin/orders/{order.Id}"
-                };
-
                 var userNotification = new Notification
                 {
                     Title = "Sipariş oluştu",
                     Message = $"{order.OrderNumber} numaralı siparişiniz başarıyla oluşturuldu.",
                     Type = NotificationType.PaymentReceived,
+                    Audience = NotificationAudience.Customer,
                     ReceiverUserId = order.UserId,
                     OrderId = order.Id,
                     Link = $"/orders/{order.Id}"
                 };
 
-                await _notificationRepository.AddAsync(adminNotification, cancellationToken);
                 await _notificationRepository.AddAsync(userNotification, cancellationToken);
+                await CreateStaffNotificationsAsync(
+                    "Yeni sipariş geldi",
+                    $"{order.OrderNumber} numaralı siparişin ödemesi tamamlandı.",
+                    NotificationType.OrderCreated,
+                    order.Id,
+                    $"/admin/orders/{order.Id}",
+                    cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
             }
@@ -668,6 +681,28 @@ namespace ECommerceApp.Application.Services
 
                 _ => throw new BusinessRuleException("Payment transaction state is invalid.")
             };
+        }
+
+        private async Task CreateStaffNotificationsAsync(string title, string message, NotificationType type, long orderId, string link, CancellationToken cancellationToken)
+        {
+            var staffUsers = await _userRepository.GetUsersInRolesAsync(new[] { "Admin", "StoreManager" }, cancellationToken);
+
+            foreach (var staffUser in staffUsers)
+            {
+                if (string.IsNullOrWhiteSpace(staffUser.Id))
+                    continue;
+
+                await _notificationRepository.AddAsync(new Notification
+                {
+                    Title = title,
+                    Message = message,
+                    Type = type,
+                    Audience = NotificationAudience.Backoffice,
+                    ReceiverUserId = staffUser.Id,
+                    OrderId = orderId,
+                    Link = link
+                }, cancellationToken);
+            }
         }
 
     }

@@ -56,9 +56,9 @@ namespace ECommerceApp.Application.Services
             };
         }
 
-        public async Task<PagedResult<NotificationDto>> GetRoleNotificationsAsync(string role, NotificationQueryParams queryParams, CancellationToken cancellationToken)
+        public async Task<PagedResult<NotificationDto>> GetStaffNotificationsAsync(string userId, NotificationQueryParams queryParams, CancellationToken cancellationToken)
         {
-            var totalCount = await _notificationRepository.CountForRoleAsync(role, cancellationToken);
+            var totalCount = await _notificationRepository.CountForStaffAsync(userId, cancellationToken);
 
             if (totalCount == 0)
             {
@@ -69,7 +69,7 @@ namespace ECommerceApp.Application.Services
                 };
             }
 
-            var notifications = await _notificationRepository.GetRoleNotificationsAsync(role, queryParams.PageNumber, queryParams.PageSize, cancellationToken);
+            var notifications = await _notificationRepository.GetStaffNotificationsAsync(userId, queryParams.PageNumber, queryParams.PageSize, cancellationToken);
 
             return new PagedResult<NotificationDto>
             {
@@ -94,9 +94,9 @@ namespace ECommerceApp.Application.Services
             return await _notificationRepository.GetUnreadCountForUserAsync(userId, cancellationToken);
         }
 
-        public async Task<int> GetUnreadCountForRoleAsync(string role, CancellationToken cancellationToken)
+        public async Task<int> GetUnreadCountForStaffAsync(string userId, CancellationToken cancellationToken)
         {
-            return await _notificationRepository.GetUnreadCountForRoleAsync(role, cancellationToken);
+            return await _notificationRepository.GetUnreadCountForStaffAsync(userId, cancellationToken);
         }
 
         public async Task MarkAsReadForUserAsync(long notificationId, string userId, CancellationToken cancellationToken)
@@ -115,9 +115,9 @@ namespace ECommerceApp.Application.Services
             await _unitOfWork.CommitAsync(cancellationToken);
         }
 
-        public async Task MarkAsReadForRoleAsync(long notificationId, string role, CancellationToken cancellationToken)
+        public async Task MarkAsReadForStaffAsync(long notificationId, string userId, CancellationToken cancellationToken)
         {
-            var notification = await _notificationRepository.GetByIdForRoleAsync(notificationId, role, cancellationToken);
+            var notification = await _notificationRepository.GetByIdForStaffAsync(notificationId, userId, cancellationToken);
 
             if (notification is null)
                 throw new NotFoundException("Notification not found.");
