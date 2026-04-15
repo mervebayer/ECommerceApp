@@ -38,8 +38,11 @@ namespace ECommerceApp.Application.Services
         private readonly IPaymentGateway _paymentGateway;
         private readonly IUserRepository _userRepository;
         private readonly IPaymentTransactionRepository _paymentTransactionRepository;
+        private readonly INotificationRealtimeService _notificationRealtimeService;
 
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository, INotificationRepository notificationRepository)
+
+
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository, INotificationRepository notificationRepository, INotificationRealtimeService notificationRealtimeService)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -56,6 +59,7 @@ namespace ECommerceApp.Application.Services
             _userRepository = userRepository;
             _paymentTransactionRepository = paymentTransactionRepository;
             _notificationRepository = notificationRepository;
+            _notificationRealtimeService = notificationRealtimeService;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -180,6 +184,18 @@ namespace ECommerceApp.Application.Services
 
             await _unitOfWork.CommitAsync(cancellationToken);
 
+            await TryPublishRealtimeAsync(
+                    () => _notificationRealtimeService.NotifyOrderUpdatedAsync(
+                        "Sipariş iptal edildi",
+                        $"{order.OrderNumber} numaralı sipariş yönetici tarafından iptal edildi.",
+                        order.UserId,
+                        "Siparişiniz iptal edildi",
+                        $"{order.OrderNumber} numaralı siparişiniz iptal edildi.",
+                        order.Id,
+                        cancellationToken),
+                    "OrderCancelledByAdmin",
+                    order.Id);
+
             _logger.LogInformation("Order cancelled by admin. OrderId={OrderId}", orderId);
         }
 
@@ -233,6 +249,18 @@ namespace ECommerceApp.Application.Services
                 cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);
+
+            await TryPublishRealtimeAsync(
+                    () => _notificationRealtimeService.NotifyOrderUpdatedAsync(
+                        "Sipariş durumu güncellendi",
+                        $"{order.OrderNumber} numaralı siparişin durumu {newStatus} olarak güncellendi.",
+                        order.UserId,
+                        "Sipariş durumu güncellendi",
+                        $"{order.OrderNumber} numaralı siparişinizin durumu {newStatus} olarak güncellendi.",
+                        order.Id,
+                        cancellationToken),
+                    "OrderStatusUpdated",
+                    order.Id);
 
             _logger.LogInformation("Order status updated successfully. OrderId={OrderId}, UserId={UserId}, NewStatus={NewStatus}", orderId, newStatus);
         }
@@ -508,6 +536,7 @@ namespace ECommerceApp.Application.Services
                 };
 
                 await _notificationRepository.AddAsync(userNotification, cancellationToken);
+
                 await CreateStaffNotificationsAsync(
                     "Yeni sipariş geldi",
                     $"{order.OrderNumber} numaralı siparişin ödemesi tamamlandı.",
@@ -515,7 +544,27 @@ namespace ECommerceApp.Application.Services
                     order.Id,
                     $"/admin/orders/{order.Id}",
                     cancellationToken);
+
                 await _unitOfWork.CommitAsync(cancellationToken);
+
+                await TryPublishRealtimeAsync(
+                    () => _notificationRealtimeService.NotifyBackofficeAsync(
+                        "Yeni sipariş geldi",
+                        $"{order.OrderNumber} numaralı siparişin ödemesi tamamlandı.",
+                        order.Id,
+                        cancellationToken),
+                    "PaymentCompletedBackoffice",
+                    order.Id);
+
+                await TryPublishRealtimeAsync(
+                    () => _notificationRealtimeService.NotifyUserAsync(
+                        order.UserId,
+                        "Sipariş oluştu",
+                        $"{order.OrderNumber} numaralı siparişiniz başarıyla oluşturuldu.",
+                        order.Id,
+                        cancellationToken),
+                    "PaymentCompletedUser",
+                    order.Id);
 
             }
             else
@@ -704,6 +753,19 @@ namespace ECommerceApp.Application.Services
                 }, cancellationToken);
             }
         }
+
+        private async Task TryPublishRealtimeAsync(Func<Task> publishAction, string operationName, long orderId)
+        {
+            try
+            {
+                await publishAction();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Realtime notification publish failed. Operation={Operation}, OrderId={OrderId}", operationName, orderId);
+            }
+        }
+
 
     }
 }

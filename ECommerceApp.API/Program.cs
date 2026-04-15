@@ -1,6 +1,8 @@
+using ECommerceApp.API.Hubs;
 using ECommerceApp.API.Middlewares;
 using ECommerceApp.API.Services;
 using ECommerceApp.Application.Extensions.DependencyInjection;
+using ECommerceApp.Application.Interfaces;
 using ECommerceApp.Domain.Entities;
 using ECommerceApp.Infrastructure.Extensions.DependencyInjection;
 using ECommerceApp.Infrastructure.Options;
@@ -30,6 +32,7 @@ try
     builder.Host.UseSerilog();
 
     builder.Services.AddControllers();
+    builder.Services.AddSignalR();
     builder.Services.AddEndpointsApiExplorer();
 
     builder.Services.AddSwaggerGen(c =>
@@ -60,6 +63,7 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IBasketIdentityService, BasketIdentityService>();
+    builder.Services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
 
     var jwtSettings = builder.Configuration.GetSection("JWTSettings").Get<JwtSettings>();
     var secretKey = Encoding.UTF8.GetBytes(jwtSettings.SecurityKey);
@@ -69,15 +73,35 @@ try
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
+    .AddJwtBearer(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings.Issuer,
-        ValidAudience = jwtSettings.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrWhiteSpace(accessToken) &&
+                    path.StartsWithSegments("/hubs/notifications"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
     var app = builder.Build();
@@ -109,6 +133,7 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapHub<NotificationHub>("/hubs/notifications");
     //app.MapFallbackToFile("index.html");
 
     using (var scope = app.Services.CreateAsyncScope())
