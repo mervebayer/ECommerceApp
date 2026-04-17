@@ -45,6 +45,17 @@ namespace ECommerceApp.API.Controllers
             return NoContent();
         }
 
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+        {
+            var result = await _authenticationService.ConfirmEmailAsync(userId, token);
+            if (!result)
+                return BadRequest(new { message = "Email dogrulama basarisiz." });
+
+            return Ok(new { message = "Email dogrulandi." });
+        }
+
+
 
     }
 }

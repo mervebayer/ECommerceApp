@@ -9,7 +9,9 @@ using ECommerceApp.Domain.Entities;
 using ECommerceApp.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace ECommerceApp.Application.Services;
 
@@ -23,8 +25,11 @@ public class AuthenticationService : IAuthenticationService
     private readonly IValidator<LoginDto> _loginValidator;
     private readonly IValidator<RefreshTokenRequestDto> _refreshTokenValidator;
     private readonly ILogger<AuthenticationService> _logger;
+    private readonly IEmailService _emailService;
+    private readonly IAppUrlProvider _appUrlProvider;
 
-    public AuthenticationService(UserManager<AppUser> userManager, ITokenService tokenService, IMapper mapper, IValidator<UserRegisterDto> registerValidator, IUserRepository userRepository, ILogger<AuthenticationService> logger, IValidator<LoginDto> loginValidator, IValidator<RefreshTokenRequestDto> refreshTokenValidator)
+
+    public AuthenticationService(UserManager<AppUser> userManager, ITokenService tokenService, IMapper mapper, IValidator<UserRegisterDto> registerValidator, IUserRepository userRepository, ILogger<AuthenticationService> logger, IValidator<LoginDto> loginValidator, IValidator<RefreshTokenRequestDto> refreshTokenValidator, IEmailService emailService, IAppUrlProvider appUrlProvider)
     {
         _userManager = userManager;
         _tokenService = tokenService;
@@ -34,6 +39,8 @@ public class AuthenticationService : IAuthenticationService
         _logger = logger;
         _loginValidator = loginValidator;
         _refreshTokenValidator = refreshTokenValidator;
+        _emailService = emailService;
+        _appUrlProvider = appUrlProvider;
     }
 
     public async Task<TokenDto> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken = default)
@@ -52,6 +59,10 @@ public class AuthenticationService : IAuthenticationService
             _logger.LogWarning("Login failed. Invalid credentials. UsernameOrEmail={UsernameOrEmail}", loginDto.UsernameOrEmail);
             throw new UnauthorizedException("Invalid username/email or password.");
         }
+
+        if (!user.EmailConfirmed)
+            throw new UnauthorizedException("Email adresinizi dogrulamadan giris yapamazsiniz.");
+
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -151,6 +162,23 @@ public class AuthenticationService : IAuthenticationService
             }
 
             _logger.LogInformation("User registered successfully. UserId={UserId}", user.Id);
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            var confirmationLink = _appUrlProvider.GetEmailConfirmationUrl(user.Id, encodedToken);
+
+
+            await TrySendEmailAsync(
+                user.Email,
+                "E-posta adresinizi dogrulayin",
+                            $"""
+                <h2>Merhaba {user.FirstName},</h2>
+                <p>Kaydinizi tamamlamak icin asagidaki baglantiya tiklayin:</p>
+                <p><a href="{confirmationLink}">E-postami dogrula</a></p>
+                """);
+
+
             return _mapper.Map<UserDto>(user);
         }
         catch (OperationCanceledException) { throw; }
@@ -185,5 +213,59 @@ public class AuthenticationService : IAuthenticationService
             throw new BadRequestException($"Logout failed: {errors}");
         }
     }
+
+    public async Task<bool> ConfirmEmailAsync(string userId, string token, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+            return false;
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return false;
+
+        try
+        {
+            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+
+            return result.Succeeded;
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning(ex, "Invalid email confirmation token format. UserId={UserId}", userId);
+            return false;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid email confirmation token. UserId={UserId}", userId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Email confirmation failed unexpectedly. UserId={UserId}", userId);
+            return false;
+        }
+    }
+
+
+
+
+    private async Task TrySendEmailAsync(string? toEmail, string subject, string htmlBody)
+    {
+        if (string.IsNullOrWhiteSpace(toEmail))
+            return;
+
+        try
+        {
+            await _emailService.SendAsync(toEmail, subject, htmlBody);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Registration email could not be sent. To={ToEmail}", toEmail);
+        }
+    }
+
 
 }

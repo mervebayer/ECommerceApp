@@ -72,7 +72,14 @@ namespace ECommerceApp.Infrastructure.Extensions.DependencyInjection
             services.AddSingleton<IJwtProvider, JwtProvider>();
 
             services.Configure<CheckoutSettings>(configuration.GetSection("CheckoutSettings"));
-            services.AddScoped<ICheckoutSettings>(sp =>sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CheckoutSettings>>().Value);
+            services.AddScoped<ICheckoutSettings>(sp =>sp.GetRequiredService<IOptions<CheckoutSettings>>().Value);
+
+            services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+            services.AddScoped<IEmailService, SmtpEmailService>();
+
+            services.Configure<AppUrlSettings>(configuration.GetSection(AppUrlSettings.SectionName));
+            services.AddScoped(sp => sp.GetRequiredService<IOptions<AppUrlSettings>>().Value);
+            services.AddScoped<IAppUrlProvider, AppUrlProvider>();
 
             services.Configure<IyzicoOptions>(configuration.GetSection(IyzicoOptions.SectionName));
             services.AddHttpClient<IPaymentGateway, IyzicoPaymentGateway>((serviceProvider, client) =>

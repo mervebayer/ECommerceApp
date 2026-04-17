@@ -39,10 +39,9 @@ namespace ECommerceApp.Application.Services
         private readonly IUserRepository _userRepository;
         private readonly IPaymentTransactionRepository _paymentTransactionRepository;
         private readonly INotificationRealtimeService _notificationRealtimeService;
+        private readonly IEmailService _emailService;
 
-
-
-        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository, INotificationRepository notificationRepository, INotificationRealtimeService notificationRealtimeService)
+        public OrderService(IOrderRepository orderRepository, IBasketRepository basketRepository, IProductRepository productRepository, IUnitOfWork unitOfWork, ILogger<OrderService> logger, IMapper mapper, IOrderNumberGenerator orderNumberGenerator, IUserAddressRepository userAddressRepository, IValidator<CreateOrderRequestDto> createOrderValidator, IValidator<PayOrderRequestDto> payOrderValidator, ICheckoutSettings checkoutSettings, IPaymentGateway paymentGateway, IUserRepository userRepository, IPaymentTransactionRepository paymentTransactionRepository, INotificationRepository notificationRepository, INotificationRealtimeService notificationRealtimeService, IEmailService emailService)
         {
             _orderRepository = orderRepository;
             _basketRepository = basketRepository;
@@ -60,6 +59,7 @@ namespace ECommerceApp.Application.Services
             _paymentTransactionRepository = paymentTransactionRepository;
             _notificationRepository = notificationRepository;
             _notificationRealtimeService = notificationRealtimeService;
+            _emailService = emailService;
         }
 
         public async Task<PagedResult<OrderListDto>> GetMyOrdersAsync(string userId, OrderQueryParams queryParams, CancellationToken cancellationToken)
@@ -150,6 +150,17 @@ namespace ECommerceApp.Application.Services
             await CancelOrderInternalAsync(order, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
 
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+
+            await TrySendOrderEmailAsync(
+                user?.Email,
+                "Siparisiniz iptal edildi",
+                            $"""
+                <h2>Merhaba {user?.FirstName ?? "Sayin Musteri"},</h2>
+                <p><strong>{order.OrderNumber}</strong> numarali siparisiniz iptal edildi.</p>
+                """,
+                order.Id);
+
             _logger.LogInformation("Order cancelled by user. OrderId={OrderId}, UserId={UserId}", orderId, userId);
         }
 
@@ -195,6 +206,18 @@ namespace ECommerceApp.Application.Services
                         cancellationToken),
                     "OrderCancelledByAdmin",
                     order.Id);
+
+            var orderOwner = await _userRepository.GetByIdAsync(order.UserId, cancellationToken);
+
+            await TrySendOrderEmailAsync(
+                orderOwner?.Email,
+                "Siparisiniz iptal edildi",
+                $"""
+                <h2>Merhaba {orderOwner?.FirstName ?? "Sayin Musteri"},</h2>
+                <p><strong>{order.OrderNumber}</strong> numarali siparisiniz yonetim tarafindan iptal edildi.</p>
+                """,
+                order.Id);
+
 
             _logger.LogInformation("Order cancelled by admin. OrderId={OrderId}", orderId);
         }
@@ -249,6 +272,33 @@ namespace ECommerceApp.Application.Services
                 cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);
+
+            var orderOwner = await _userRepository.GetByIdAsync(order.UserId, cancellationToken);
+
+            if (newStatus == OrderStatus.Shipped)
+            {
+                await TrySendOrderEmailAsync(
+                    orderOwner?.Email,
+                    "Siparisiniz kargoya verildi",
+                    $"""
+                            <h2>Merhaba {orderOwner?.FirstName ?? "Sayin Musteri"},</h2>
+                            <p><strong>{order.OrderNumber}</strong> numarali siparisiniz kargoya verildi.</p>
+                            <p>Siparisinizi siparis detay ekranindan takip edebilirsiniz.</p>
+                            """,
+                                        order.Id);
+                                }
+           else if (newStatus == OrderStatus.Delivered)
+           {
+                await TrySendOrderEmailAsync(
+                     orderOwner?.Email,
+                     "Siparisiniz teslim edildi",
+                     $"""
+                            <h2>Merhaba {orderOwner?.FirstName ?? "Sayin Musteri"},</h2>
+                            <p><strong>{order.OrderNumber}</strong> numarali siparisiniz teslim edildi.</p>
+                            <p>Bizi tercih ettiginiz icin tesekkur ederiz.</p>
+                            """,
+                                        order.Id);
+                                }
 
             await TryPublishRealtimeAsync(
                     () => _notificationRealtimeService.NotifyOrderUpdatedAsync(
@@ -565,6 +615,17 @@ namespace ECommerceApp.Application.Services
                         cancellationToken),
                     "PaymentCompletedUser",
                     order.Id);
+                
+                await TrySendOrderEmailAsync(
+                        user.Email,
+                        "Siparisiniz onaylandi",
+                        $"""
+                        <h2>Merhaba {user.FirstName} {user.LastName},</h2>
+                        <p><strong>{order.OrderNumber}</strong> numarali siparisinizin odemesi basariyla alindi.</p>
+                        <p>Siparisiniz onaylandi ve hazirlama sureci baslayacak.</p>
+                        <p>Toplam tutar: {order.TotalAmount:N2} TL</p>
+                        """,
+                        order.Id);
 
             }
             else
@@ -766,6 +827,20 @@ namespace ECommerceApp.Application.Services
             }
         }
 
+        private async Task TrySendOrderEmailAsync(string? toEmail, string subject, string htmlBody, long orderId)
+        {
+            if (string.IsNullOrWhiteSpace(toEmail))
+                return;
+
+            try
+            {
+                await _emailService.SendAsync(toEmail, subject, htmlBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Order email could not be sent. OrderId={OrderId}, To={ToEmail}", orderId, toEmail);
+            }
+        }
 
     }
 }

@@ -15,6 +15,8 @@ namespace ECommerceApp.Application.Interfaces
         Task<TokenDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default);
         Task<UserDto> RegisterAsync(UserRegisterDto registerDto, CancellationToken cancellationToken = default);
         Task LogoutAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default);
+        Task<bool> ConfirmEmailAsync(string userId, string token, CancellationToken cancellationToken = default);
+
 
     }
 }
