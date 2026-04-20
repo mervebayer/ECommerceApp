@@ -22,6 +22,10 @@ namespace ECommerceApp.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasMaxLength(100);
 
+            builder.Property(x => x.Description)
+                  .HasMaxLength(4000)
+                   .IsRequired(false);
+
             builder.Property(x => x.Price)
                 .HasPrecision(18, 2);
 

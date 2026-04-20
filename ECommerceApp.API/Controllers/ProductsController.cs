@@ -106,5 +106,21 @@ namespace ECommerceApp.API.Controllers
             return NoContent();
         }
 
+        [HttpPost("{id:long}/generate-description")]
+        [Authorize(Roles = "Admin,StoreManager")]
+        public async Task<ActionResult<GenerateProductDescriptionResponseDto>> GenerateDescription(long id, CancellationToken cancellationToken)
+        {
+            var result = await _productService.GenerateDescriptionAsync(id, cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpPost("{id:long}/apply-generated-description")]
+        [Authorize(Roles = "Admin,StoreManager")]
+        public async Task<ActionResult<ProductDto>> ApplyGeneratedDescription(long id, [FromBody] ApplyGeneratedDescriptionRequestDto request, CancellationToken cancellationToken)
+        {
+            var result = await _productService.ApplyGeneratedDescriptionAsync(id, request, cancellationToken);
+            return Ok(result);
+        }
+
     }
 }

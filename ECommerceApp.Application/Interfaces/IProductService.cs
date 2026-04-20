@@ -20,7 +20,9 @@ namespace ECommerceApp.Application.Interfaces
         //Task<ProductDto> Update(long id, ProductUpdateDto entity);
         Task UpdateAsync(long id, ProductUpdateDto entity, CancellationToken cancellationToken);
         Task DeleteAsync(long id, CancellationToken cancellationToken);
-        Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType, CancellationToken cancellationToken);  
-          
+        Task<IEnumerable<ProductListDto>> GetProductsByCategoryIdAsync(long categoryId, int pageNumber, int pageSize, ProductSortType sortType, CancellationToken cancellationToken);
+        Task<GenerateProductDescriptionResponseDto> GenerateDescriptionAsync(long id, CancellationToken cancellationToken);
+        Task<ProductDto> ApplyGeneratedDescriptionAsync(long id, ApplyGeneratedDescriptionRequestDto request, CancellationToken cancellationToken);
+
     }
 }

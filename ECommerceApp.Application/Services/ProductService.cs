@@ -24,8 +24,9 @@ namespace ECommerceApp.Application.Services
         private readonly IValidator<ProductUpdateDto> _updateValidator;
         private readonly IValidator<ProductQueryParams> _paramValidator;
         private readonly ILogger<ProductService> _logger;
+        private readonly IProductDescriptionGenerator _productDescriptionGenerator;
 
-        public ProductService(IProductRepository productRepository, IMapper mapper, IUnitOfWork unitOfWork, IValidator<ProductCreateDto> createValidator, IValidator<ProductUpdateDto> updateValidator, ILogger<ProductService> logger, IValidator<ProductQueryParams> paramValidator, IProductReadRepository productReadRepository)
+        public ProductService(IProductRepository productRepository, IMapper mapper, IUnitOfWork unitOfWork, IValidator<ProductCreateDto> createValidator, IValidator<ProductUpdateDto> updateValidator, ILogger<ProductService> logger, IValidator<ProductQueryParams> paramValidator, IProductReadRepository productReadRepository, IProductDescriptionGenerator productDescriptionGenerator)
         {
             _productRepository = productRepository;
             _mapper = mapper;
@@ -35,6 +36,7 @@ namespace ECommerceApp.Application.Services
             _logger = logger;
             _paramValidator = paramValidator;
             _productReadRepository = productReadRepository;
+            _productDescriptionGenerator = productDescriptionGenerator;
         }
 
         public async Task<PagedResult<ProductListItemDto>> GetAllAsync(ProductQueryParams p, CancellationToken cancellationToken)
@@ -113,6 +115,57 @@ namespace ECommerceApp.Application.Services
             _productRepository.Delete(data);
             await _unitOfWork.CommitAsync(cancellationToken);
             _logger.LogInformation("Product deleted (soft delete). ProductId={ProductId}", id);
+        }
+
+        public async Task<GenerateProductDescriptionResponseDto> GenerateDescriptionAsync(long id, CancellationToken cancellationToken)
+        {
+            var product = await _productRepository.GetProductByIdAsync(id, cancellationToken)
+                ?? throw new NotFoundException($"Product with Id {id} was not found.");
+
+            var input = new ProductDescriptionGenerationInput
+            {
+                Name = product.Name,
+                CurrentDescription = product.Description,
+                CategoryName = product.Category?.Name,
+                Price = product.Price,
+                ImageUrl = product.Images
+                    .OrderByDescending(x => x.IsMain)
+                    .Select(x => x.Url)
+                    .FirstOrDefault()
+            };
+
+            var generatedDescription = await _productDescriptionGenerator.GenerateAsync(input, cancellationToken);
+
+            return new GenerateProductDescriptionResponseDto
+            {
+                Description = generatedDescription
+            };
+        }
+        public async Task<ProductDto> ApplyGeneratedDescriptionAsync(long id, ApplyGeneratedDescriptionRequestDto request, CancellationToken cancellationToken)
+        {
+            if (request is null)
+                throw new BadRequestException("Request cannot be null.");
+
+            if (string.IsNullOrWhiteSpace(request.Description))
+                throw new BadRequestException("Description is required.");
+
+            if (request.Description.Length > 4000)
+                throw new BadRequestException("Description cannot exceed 4000 characters.");
+
+            var product = await _productRepository.GetProductByIdAsync(id, cancellationToken)
+                ?? throw new NotFoundException($"Product with Id {id} was not found.");
+
+            product.Description = request.Description.Trim();
+
+            _productRepository.Update(product);
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation("Generated product description applied. ProductId={ProductId}", id);
+
+            var updatedProduct = await _productRepository.GetProductByIdAsync(id, cancellationToken)
+                ?? throw new NotFoundException($"Product with Id {id} could not be loaded after update.");
+
+            return _mapper.Map<ProductDto>(updatedProduct);
         }
 
 

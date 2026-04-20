@@ -66,6 +66,11 @@ namespace ECommerceApp.Infrastructure.Extensions.DependencyInjection
             
             services.AddScoped<INotificationRepository, NotificationRepository>();
 
+            services.AddScoped<IProductDescriptionGenerator, MockProductDescriptionGenerator>();
+
+            //services.Configure<OpenAISettings>(configuration.GetSection(OpenAISettings.SectionName));
+
+            //services.AddHttpClient<IProductDescriptionGenerator, OpenAiProductDescriptionGenerator>();
 
             // JWT settings binding (options)
             services.Configure<JwtSettings>(configuration.GetSection("JWTSettings"));
