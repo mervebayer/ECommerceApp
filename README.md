@@ -4,7 +4,7 @@
 ![Architecture](https://img.shields.io/badge/architecture-clean--architecture-blue)
 ![Status](https://img.shields.io/badge/status-actively%20maintained-brightgreen)
 
-Production-oriented e-commerce backend built with **ASP.NET Core** and **Clean Architecture**, focusing on real-world backend concerns such as **authentication**, **validation**, **caching**, **logging**, **exception handling**, **reservation-based checkout**, ** payment processing**, **real-time notifications**, **email verification**, and **performance-aware data access**.
+Production-oriented e-commerce backend built with **ASP.NET Core** and **Clean Architecture**, focusing on real-world backend concerns such as **authentication**, **validation**, **caching**, **logging**, **exception handling**, **reservation-based checkout**, **payment processing**, **real-time notifications**, **email verification**, and **performance-aware data access**.
 
 
 ## Purpose
